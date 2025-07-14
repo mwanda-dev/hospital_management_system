@@ -1,1 +1,7 @@
-"# hospital_management_system" 
+# Hospital Management System
+***
+What tech Stack/Frameworks to use for the 
+## Frontend 
+
+
+## Backend
