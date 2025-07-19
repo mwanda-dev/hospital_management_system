@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         ");
         
         $stmt->bind_param(
-            "iiss",
+            "iisss",
             $_POST['patient_id'],
             $_SESSION['user_id'],
             $_POST['test_name'],

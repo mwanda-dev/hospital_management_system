@@ -64,7 +64,7 @@ $pending_payments = $conn->query("SELECT SUM(total_amount - paid_amount) FROM bi
     <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
         <div class="flex justify-between items-center mb-4">
             <h3 class="font-semibold text-lg">Recent Activity</h3>
-            <a href="#" class="text-blue-500 text-sm">View All</a>
+            <a href="view-all.php" class="text-blue-500 text-sm">View All</a>
         </div>
         <div class="space-y-4">
             <?php

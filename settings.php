@@ -1,6 +1,5 @@
  
 <?php
-ob_start();
 require_once 'includes/header.php';
 $page_title = "System Settings";
 
