@@ -29,7 +29,7 @@ function isLoggedIn() {
 // Redirect if not logged in
 function checkAuth() {
     if (!isLoggedIn()) {
-        header("Location: login.php");
+        header("Location: includes/login.php");
         exit();
     }
 }
