@@ -1,10 +1,9 @@
 <?php
-session_start();
-require_once 'includes/config.php';
+require_once '../includes/config.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit();
 }
 
@@ -27,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['user_id'] = $user['user_id'];
             $_SESSION['username'] = $user['username'];
             
-            header("Location: index.php");
+            header("Location: ../index.php");
             exit();
         } else {
             $error = "Invalid username or password!";
