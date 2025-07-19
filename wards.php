@@ -1,0 +1,306 @@
+ 
+<?php
+$page_title = "Ward Management";
+require_once 'includes/header.php';
+
+// Handle form submissions
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['add_ward'])) {
+        // Add new ward
+        $stmt = $conn->prepare("
+            INSERT INTO wards (
+                ward_name, ward_type, capacity, charge_per_day
+            ) VALUES (?, ?, ?, ?)
+        ");
+        
+        $stmt->bind_param(
+            "ssid",
+            $_POST['ward_name'],
+            $_POST['ward_type'],
+            $_POST['capacity'],
+            $_POST['charge_per_day']
+        );
+        
+        if ($stmt->execute()) {
+            $_SESSION['message'] = "Ward added successfully!";
+            header("Location: wards.php");
+            exit();
+        } else {
+            $error = "Error adding ward: " . $conn->error;
+        }
+    } elseif (isset($_POST['update_ward'])) {
+        // Update ward
+        $stmt = $conn->prepare("
+            UPDATE wards SET 
+                ward_name = ?,
+                ward_type = ?,
+                capacity = ?,
+                charge_per_day = ?
+            WHERE ward_id = ?
+        ");
+        
+        $stmt->bind_param(
+            "ssidi",
+            $_POST['ward_name'],
+            $_POST['ward_type'],
+            $_POST['capacity'],
+            $_POST['charge_per_day'],
+            $_POST['ward_id']
+        );
+        
+        if ($stmt->execute()) {
+            $_SESSION['message'] = "Ward updated successfully!";
+            header("Location: wards.php");
+            exit();
+        } else {
+            $error = "Error updating ward: " . $conn->error;
+        }
+    }
+}
+
+// Handle delete action
+if (isset($_GET['delete'])) {
+    $ward_id = intval($_GET['delete']);
+    $stmt = $conn->prepare("DELETE FROM wards WHERE ward_id = ?");
+    $stmt->bind_param("i", $ward_id);
+    
+    if ($stmt->execute()) {
+        $_SESSION['message'] = "Ward deleted successfully!";
+        header("Location: wards.php");
+        exit();
+    } else {
+        $error = "Error deleting ward: " . $conn->error;
+    }
+}
+
+// Display messages
+if (isset($_SESSION['message'])) {
+    echo '<div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <span class="block sm:inline">' . $_SESSION['message'] . '</span>
+    </div>';
+    unset($_SESSION['message']);
+}
+
+if (isset($error)) {
+    echo '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <span class="block sm:inline">' . $error . '</span>
+    </div>';
+}
+
+// Check if we're adding or editing a ward
+$editing = false;
+$ward = null;
+
+if (isset($_GET['edit'])) {
+    $editing = true;
+    $ward_id = intval($_GET['edit']);
+    $stmt = $conn->prepare("SELECT * FROM wards WHERE ward_id = ?");
+    $stmt->bind_param("i", $ward_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $ward = $result->fetch_assoc();
+    
+    if (!$ward) {
+        $_SESSION['error'] = "Ward not found!";
+        header("Location: wards.php");
+        exit();
+    }
+} elseif (isset($_GET['add'])) {
+    $editing = true;
+}
+?>
+
+<?php if ($editing): ?>
+<!-- Ward Form -->
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h3 class="font-semibold text-lg mb-4"><?php echo isset($_GET['edit']) ? 'Edit Ward' : 'Add New Ward'; ?></h3>
+    
+    <form method="POST" action="">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="ward_name">Ward Name</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                    id="ward_name" name="ward_name" type="text" placeholder="Ward name" 
+                    value="<?php echo htmlspecialchars($ward['ward_name'] ?? ''); ?>" required>
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="ward_type">Ward Type</label>
+                <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                    id="ward_type" name="ward_type" required>
+                    <option value="general" <?php echo (isset($ward['ward_type']) && $ward['ward_type'] == 'general') ? 'selected' : ''; ?>>General</option>
+                    <option value="icu" <?php echo (isset($ward['ward_type']) && $ward['ward_type'] == 'icu') ? 'selected' : ''; ?>>ICU</option>
+                    <option value="maternity" <?php echo (isset($ward['ward_type']) && $ward['ward_type'] == 'maternity') ? 'selected' : ''; ?>>Maternity</option>
+                    <option value="pediatric" <?php echo (isset($ward['ward_type']) && $ward['ward_type'] == 'pediatric') ? 'selected' : ''; ?>>Pediatric</option>
+                    <option value="surgical" <?php echo (isset($ward['ward_type']) && $ward['ward_type'] == 'surgical') ? 'selected' : ''; ?>>Surgical</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="capacity">Capacity</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                    id="capacity" name="capacity" type="number" min="1" placeholder="Number of beds" 
+                    value="<?php echo htmlspecialchars($ward['capacity'] ?? 10); ?>" required>
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="charge_per_day">Charge per Day</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                    id="charge_per_day" name="charge_per_day" type="number" step="0.01" min="0" placeholder="0.00" 
+                    value="<?php echo htmlspecialchars($ward['charge_per_day'] ?? ''); ?>" required>
+            </div>
+        </div>
+        
+        <div class="mt-6 flex justify-end space-x-4">
+            <a href="wards.php" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                Cancel
+            </a>
+            <?php if (isset($_GET['edit'])): ?>
+                <input type="hidden" name="ward_id" value="<?php echo $ward['ward_id']; ?>">
+                <button type="submit" name="update_ward" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Update Ward
+                </button>
+            <?php else: ?>
+                <button type="submit" name="add_ward" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Add Ward
+                </button>
+            <?php endif; ?>
+        </div>
+    </form>
+</div>
+<?php else: ?>
+<!-- Wards List -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="p-4 border-b flex justify-between items-center">
+        <h3 class="font-semibold">Wards</h3>
+        <div class="flex space-x-2">
+            <a href="wards.php?add" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                <i class="fas fa-plus"></i> Add Ward
+            </a>
+        </div>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ward Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Beds</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Occupancy</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Daily Rate</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <?php
+                $wards = $conn->query("
+                    SELECT w.*, 
+                           COUNT(b.bed_id) as total_beds,
+                           SUM(CASE WHEN b.status = 'occupied' THEN 1 ELSE 0 END) as occupied_beds
+                    FROM wards w
+                    LEFT JOIN beds b ON w.ward_id = b.ward_id
+                    GROUP BY w.ward_id
+                    ORDER BY w.ward_name
+                ");
+                
+                while ($ward = $wards->fetch_assoc()):
+                    $occupancy = $ward['total_beds'] > 0 ? round(($ward['occupied_beds'] / $ward['total_beds']) * 100) : 0;
+                ?>
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($ward['ward_name']); ?></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <?php echo ucfirst($ward['ward_type']); ?>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <?php echo $ward['occupied_beds']; ?>/<?php echo $ward['total_beds']; ?>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="bg-blue-600 h-2.5 rounded-full" style="width: <?php echo $occupancy; ?>%"></div>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1"><?php echo $occupancy; ?>% occupied</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        $<?php echo number_format($ward['charge_per_day'], 2); ?>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="wards.php?edit=<?php echo $ward['ward_id']; ?>" class="text-blue-600 hover:text-blue-900 mr-3">Edit</a>
+                        <a href="wards.php?delete=<?php echo $ward['ward_id']; ?>" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure you want to delete this ward?');">Delete</a>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Beds Management -->
+<div class="bg-white rounded-lg shadow overflow-hidden mt-6">
+    <div class="p-4 border-b flex justify-between items-center">
+        <h3 class="font-semibold">Bed Management</h3>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ward</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bed Number</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admission Date</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <?php
+                $beds = $conn->query("
+                    SELECT b.*, w.ward_name,
+                           p.first_name as patient_first, p.last_name as patient_last,
+                           a.admission_date
+                    FROM beds b
+                    JOIN wards w ON b.ward_id = w.ward_id
+                    LEFT JOIN admissions a ON b.bed_id = a.bed_id AND a.status = 'admitted'
+                    LEFT JOIN patients p ON a.patient_id = p.patient_id
+                    ORDER BY w.ward_name, b.bed_number
+                ");
+                
+                while ($bed = $beds->fetch_assoc()):
+                    // Status badge color
+                    $status_class = '';
+                    switch ($bed['status']) {
+                        case 'available': $status_class = 'bg-green-100 text-green-800'; break;
+                        case 'occupied': $status_class = 'bg-blue-100 text-blue-800'; break;
+                        case 'maintenance': $status_class = 'bg-red-100 text-red-800'; break;
+                    }
+                ?>
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <?php echo htmlspecialchars($bed['ward_name']); ?>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <?php echo htmlspecialchars($bed['bed_number']); ?>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $status_class; ?>">
+                            <?php echo ucfirst($bed['status']); ?>
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <?php if ($bed['status'] == 'occupied'): ?>
+                            <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($bed['patient_first'] . ' ' . $bed['patient_last']); ?></div>
+                        <?php else: ?>
+                            <div class="text-sm text-gray-500">-</div>
+                        <?php endif; ?>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <?php echo $bed['status'] == 'occupied' ? date('M j, Y', strtotime($bed['admission_date'])) : '-'; ?>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php require_once 'includes/footer.php'; ?>
