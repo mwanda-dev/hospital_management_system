@@ -1,7 +1,8 @@
  
 <?php
-$page_title = "System Settings";
+ob_start();
 require_once 'includes/header.php';
+$page_title = "System Settings";
 
 // Check if user is admin
 if ($user['role'] != 'admin') {
@@ -49,7 +50,7 @@ if (isset($_SESSION['error'])) {
 $settings_result = $conn->query("SELECT * FROM system_settings");
 $settings = [];
 while ($row = $settings_result->fetch_assoc()) {
-    $settings[$row['setting_key'] = $row['setting_value']];
+    $settings[$row['setting_key']] = $row['setting_value'];
 }
 
 // Default settings if not set
