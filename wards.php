@@ -1,7 +1,46 @@
- 
 <?php
 $page_title = "Ward Management";
 require_once 'includes/header.php';
+
+// Get system settings
+$settings_result = $conn->query("SELECT * FROM system_settings");
+$settings = [];
+while ($row = $settings_result->fetch_assoc()) {
+    $settings[$row['setting_key']] = $row['setting_value'];
+}
+
+// Default settings if not set
+$default_settings = [
+    'hospital_name' => 'MediCare Hospital',
+    'hospital_address' => '123 Medical Drive, Lusaka, Zambia',
+    'hospital_phone' => '+260 211 123456',
+    'hospital_email' => 'info@medicare.com',
+    'currency_symbol' => '$',
+    'date_format' => 'Y-m-d',
+    'time_format' => 'H:i',
+    'records_per_page' => '10',
+    'enable_sms_notifications' => '1',
+    'enable_email_notifications' => '1'
+];
+
+// Merge with defaults
+$settings = array_merge($default_settings, $settings);
+
+// Format functions
+function format_currency($amount, $symbol) {
+    return $symbol . number_format($amount, 2);
+}
+
+function format_date($date, $format_setting) {
+    $formats = [
+        'Y-m-d' => 'Y-m-d',
+        'd/m/Y' => 'd/m/Y',
+        'm/d/Y' => 'm/d/Y',
+        'd-M-Y' => 'j-M-Y'
+    ];
+    $format = $formats[$format_setting] ?? 'Y-m-d';
+    return date($format, strtotime($date));
+}
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -221,7 +260,7 @@ if (isset($_GET['edit'])) {
                         <div class="text-xs text-gray-500 mt-1"><?php echo $occupancy; ?>% occupied</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        $<?php echo number_format($ward['charge_per_day'], 2); ?>
+                        <?php echo format_currency($ward['charge_per_day'], $settings['currency_symbol']); ?>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <a href="wards.php?edit=<?php echo $ward['ward_id']; ?>" class="text-blue-600 hover:text-blue-900 mr-3">Edit</a>
@@ -293,7 +332,7 @@ if (isset($_GET['edit'])) {
                         <?php endif; ?>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <?php echo $bed['status'] == 'occupied' ? date('M j, Y', strtotime($bed['admission_date'])) : '-'; ?>
+                        <?php echo $bed['status'] == 'occupied' ? format_date($bed['admission_date'], $settings['date_format']) : '-'; ?>
                     </td>
                 </tr>
                 <?php endwhile; ?>

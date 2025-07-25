@@ -1,7 +1,46 @@
- 
 <?php
 $page_title = "Billing & Payments";
 require_once 'includes/header.php';
+
+// Get system settings
+$settings_result = $conn->query("SELECT * FROM system_settings");
+$settings = [];
+while ($row = $settings_result->fetch_assoc()) {
+    $settings[$row['setting_key']] = $row['setting_value'];
+}
+
+// Default settings if not set
+$default_settings = [
+    'hospital_name' => 'MediCare Hospital',
+    'hospital_address' => '123 Medical Drive, Lusaka, Zambia',
+    'hospital_phone' => '+260 211 123456',
+    'hospital_email' => 'info@medicare.com',
+    'currency_symbol' => '$',
+    'date_format' => 'Y-m-d',
+    'time_format' => 'H:i',
+    'records_per_page' => '10',
+    'enable_sms_notifications' => '1',
+    'enable_email_notifications' => '1'
+];
+
+// Merge with defaults
+$settings = array_merge($default_settings, $settings);
+
+// Format functions
+function format_date($date, $format_setting) {
+    $formats = [
+        'Y-m-d' => 'Y-m-d',
+        'd/m/Y' => 'd/m/Y',
+        'm/d/Y' => 'm/d/Y',
+        'd-M-Y' => 'j-M-Y'
+    ];
+    $format = $formats[$format_setting] ?? 'Y-m-d';
+    return date($format, strtotime($date));
+}
+
+function format_currency($amount, $symbol) {
+    return $symbol . number_format($amount, 2);
+}
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -372,8 +411,8 @@ if ($viewing) {
         <div>
             <h3 class="font-semibold text-lg">Invoice #INV-<?php echo str_pad($invoice['invoice_id'], 5, '0', STR_PAD_LEFT); ?></h3>
             <div class="text-sm text-gray-600">
-                Date: <?php echo date('M j, Y', strtotime($invoice['invoice_date'])); ?><br>
-                Due: <?php echo date('M j, Y', strtotime($invoice['due_date'])); ?>
+                Date: <?php echo format_date($invoice['invoice_date'], $settings['date_format']); ?><br>
+                Due: <?php echo format_date($invoice['due_date'], $settings['date_format']); ?>
             </div>
         </div>
         <div class="text-right">
@@ -397,11 +436,10 @@ if ($viewing) {
         <div>
             <h4 class="font-medium text-gray-900 mb-2">Hospital Information</h4>
             <div class="text-sm text-gray-600">
-                MediCare Hospital<br>
-                123 Medical Drive<br>
-                Lusaka, Zambia<br>
-                Phone: +260 211 123456<br>
-                Email: info@medicare.com
+                <?php echo htmlspecialchars($settings['hospital_name']); ?><br>
+                <?php echo htmlspecialchars($settings['hospital_address']); ?><br>
+                Phone: <?php echo htmlspecialchars($settings['hospital_phone']); ?><br>
+                Email: <?php echo htmlspecialchars($settings['hospital_email']); ?>
             </div>
         </div>
         <div>
@@ -429,8 +467,8 @@ if ($viewing) {
                 <tr>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?php echo htmlspecialchars($item['description']); ?></td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo $item['quantity']; ?></td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$<?php echo number_format($item['unit_price'], 2); ?></td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$<?php echo number_format($item['amount'], 2); ?></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo format_currency($item['unit_price'], $settings['currency_symbol']); ?></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo format_currency($item['unit_price'] * $item['quantity'], $settings['currency_symbol']); ?></td>
                 </tr>
                 <?php endwhile; ?>
             </tbody>
@@ -441,15 +479,15 @@ if ($viewing) {
         <div class="w-full md:w-1/3">
             <div class="flex justify-between py-2 border-b">
                 <span class="font-medium">Subtotal:</span>
-                <span>$<?php echo number_format($invoice['total_amount'], 2); ?></span>
+                <span><?php echo format_currency($invoice['total_amount'], $settings['currency_symbol']); ?></span>
             </div>
             <div class="flex justify-between py-2 border-b">
                 <span class="font-medium">Paid Amount:</span>
-                <span>$<?php echo number_format($invoice['paid_amount'], 2); ?></span>
+                <span><?php echo format_currency($invoice['paid_amount'], $settings['currency_symbol']); ?></span>
             </div>
             <div class="flex justify-between py-2 font-bold text-lg">
                 <span>Balance Due:</span>
-                <span>$<?php echo number_format($invoice['total_amount'] - $invoice['paid_amount'], 2); ?></span>
+                <span><?php echo format_currency($invoice['total_amount'] - $invoice['paid_amount'], $settings['currency_symbol']); ?></span>
             </div>
         </div>
     </div>
@@ -554,13 +592,13 @@ if ($viewing) {
                         <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($inv['first_name'] . ' ' . $inv['last_name']); ?></div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <?php echo date('M j, Y', strtotime($inv['invoice_date'])); ?>
+                        <?php echo format_date($inv['invoice_date'], $settings['date_format']); ?>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        $<?php echo number_format($inv['total_amount'], 2); ?>
+                        <?php echo format_currency($inv['total_amount'], $settings['currency_symbol']); ?>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        $<?php echo number_format($inv['paid_amount'], 2); ?>
+                        <?php echo format_currency($inv['paid_amount'], $settings['currency_symbol']); ?>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $status_class; ?>">

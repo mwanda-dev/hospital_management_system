@@ -67,7 +67,7 @@ $user = $user_result->fetch_assoc();
                         </button>
                         <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20">
                             <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">Profile</a>
-                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">Settings</a>
+                            <a href="settings.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">Settings</a>
                             <a href="includes/logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">Logout</a>
                         </div>
                     </div>

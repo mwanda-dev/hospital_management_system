@@ -1,7 +1,39 @@
- 
 <?php
 $page_title = "Patient Management";
 require_once 'includes/header.php';
+
+// Get system settings
+$settings_result = $conn->query("SELECT * FROM system_settings");
+$settings = [];
+while ($row = $settings_result->fetch_assoc()) {
+    $settings[$row['setting_key']] = $row['setting_value'];
+}
+
+// Default settings if not set
+$default_settings = [
+    'hospital_name' => 'MediCare Hospital',
+    'hospital_address' => '123 Medical Drive, Lusaka, Zambia',
+    'hospital_phone' => '+260 211 123456',
+    'hospital_email' => 'info@medicare.com',
+    'currency_symbol' => '$',
+    'date_format' => 'Y-m-d',
+    'time_format' => 'H:i',
+    'records_per_page' => '10',
+    'enable_sms_notifications' => '1',
+    'enable_email_notifications' => '1'
+];
+
+// Merge with defaults
+$settings = array_merge($default_settings, $settings);
+
+// Function to format date according to system settings
+function formatSystemDate($dateString) {
+    global $settings;
+    if (empty($dateString)) return '';
+    
+    $timestamp = strtotime($dateString);
+    return date($settings['date_format'], $timestamp);
+}
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -266,14 +298,25 @@ if (isset($_GET['edit'])) {
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 <?php
+                // Pagination
+                $records_per_page = $settings['records_per_page'];
+                $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+                $offset = ($page - 1) * $records_per_page;
+                
+                // Get total patients count
+                $count_result = $conn->query("SELECT COUNT(*) as total FROM patients");
+                $total_records = $count_result->fetch_assoc()['total'];
+                $total_pages = ceil($total_records / $records_per_page);
+                
                 $patients = $conn->query("
                     SELECT * FROM patients 
                     ORDER BY registration_date DESC
+                    LIMIT $offset, $records_per_page
                 ");
                 
                 while ($patient = $patients->fetch_assoc()):
                     $age = date_diff(date_create($patient['date_of_birth']), date_create('today'))->y;
-                    $reg_date = date('M j, Y', strtotime($patient['registration_date']));
+                    $reg_date = formatSystemDate($patient['registration_date']);
                 ?>
                 <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">PAT-<?php echo str_pad($patient['patient_id'], 4, '0', STR_PAD_LEFT); ?></td>
@@ -301,6 +344,74 @@ if (isset($_GET['edit'])) {
                 <?php endwhile; ?>
             </tbody>
         </table>
+        
+        <!-- Pagination -->
+        <?php if ($total_pages > 1): ?>
+        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div class="flex-1 flex justify-between sm:hidden">
+                <?php if ($page > 1): ?>
+                <a href="patients.php?page=<?php echo $page - 1; ?>" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Previous
+                </a>
+                <?php endif; ?>
+                <?php if ($page < $total_pages): ?>
+                <a href="patients.php?page=<?php echo $page + 1; ?>" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Next
+                </a>
+                <?php endif; ?>
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700">
+                        Showing <span class="font-medium"><?php echo $offset + 1; ?></span> to <span class="font-medium"><?php echo min($offset + $records_per_page, $total_records); ?></span> of <span class="font-medium"><?php echo $total_records; ?></span> patients
+                    </p>
+                </div>
+                <div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <?php if ($page > 1): ?>
+                        <a href="patients.php?page=<?php echo $page - 1; ?>" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                            <span class="sr-only">Previous</span>
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                        <?php endif; ?>
+                        
+                        <?php 
+                        $start_page = max(1, $page - 2);
+                        $end_page = min($total_pages, $page + 2);
+                        
+                        if ($start_page > 1) {
+                            echo '<a href="patients.php?page=1" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">1</a>';
+                            if ($start_page > 2) {
+                                echo '<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>';
+                            }
+                        }
+                        
+                        for ($i = $start_page; $i <= $end_page; $i++): 
+                        ?>
+                            <a href="patients.php?page=<?php echo $i; ?>" class="<?php echo $i == $page ? 'z-10 bg-blue-50 border-blue-500 text-blue-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'; ?> relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                <?php echo $i; ?>
+                            </a>
+                        <?php endfor; 
+                        
+                        if ($end_page < $total_pages) {
+                            if ($end_page < $total_pages - 1) {
+                                echo '<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>';
+                            }
+                            echo '<a href="patients.php?page='.$total_pages.'" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">'.$total_pages.'</a>';
+                        }
+                        ?>
+                        
+                        <?php if ($page < $total_pages): ?>
+                        <a href="patients.php?page=<?php echo $page + 1; ?>" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                            <span class="sr-only">Next</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        <?php endif; ?>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 <?php endif; ?>
