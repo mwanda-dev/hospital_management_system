@@ -1,10 +1,14 @@
- 
-<div class="sidebar bg-white w-64 md:w-72 shadow-lg fixed h-full overflow-y-auto">
-    <div class="p-4 flex items-center space-x-3 border-b">
-        <div class="bg-blue-500 p-2 rounded-lg">
-            <i class="fas fa-hospital text-white text-2xl"></i>
+<div class="sidebar bg-white w-64 md:w-72 shadow-lg fixed h-full overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out z-20">
+    <div class="p-4 flex items-center justify-between border-b">
+        <div class="flex items-center space-x-3">
+            <div class="bg-blue-500 p-2 rounded-lg">
+                <i class="fas fa-hospital text-white text-2xl"></i>
+            </div>
+            <h1 class="text-xl font-bold text-gray-800">MediCare HMS</h1>
         </div>
-        <h1 class="text-xl font-bold text-gray-800">MediCare HMS</h1>
+        <button id="sidebarClose" class="text-gray-500 hover:text-gray-700 md:hidden">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
     
     <div class="p-4">
@@ -95,3 +99,53 @@
         </nav>
     </div>
 </div>
+
+<div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-10 hidden"></div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarClose = document.getElementById('sidebarClose');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        
+        // Toggle sidebar on mobile
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.remove('-translate-x-full');
+                sidebarOverlay.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            });
+        }
+        
+        // Close sidebar
+        if (sidebarClose) {
+            sidebarClose.addEventListener('click', function() {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            });
+        }
+        
+        // Close sidebar when clicking on overlay
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', function() {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            });
+        }
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth < 768 && 
+                !sidebar.contains(event.target) && 
+                event.target !== sidebarToggle && 
+                !sidebarToggle.contains(event.target)) {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+        });
+    });
+</script>
