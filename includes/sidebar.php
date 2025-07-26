@@ -100,51 +100,38 @@
     </div>
 </div>
 
-<div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-10 hidden"></div>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const sidebar = document.querySelector('.sidebar');
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebarClose = document.getElementById('sidebarClose');
-        const sidebarOverlay = document.getElementById('sidebarOverlay');
         
-        // Toggle sidebar on mobile
+        // Show sidebar when toggle button is clicked
         if (sidebarToggle) {
             sidebarToggle.addEventListener('click', function() {
                 sidebar.classList.remove('-translate-x-full');
-                sidebarOverlay.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
             });
         }
         
-        // Close sidebar
+        // Hide sidebar when close button is clicked
         if (sidebarClose) {
             sidebarClose.addEventListener('click', function() {
                 sidebar.classList.add('-translate-x-full');
-                sidebarOverlay.classList.add('hidden');
                 document.body.style.overflow = 'auto';
             });
         }
         
-        // Close sidebar when clicking on overlay
-        if (sidebarOverlay) {
-            sidebarOverlay.addEventListener('click', function() {
-                sidebar.classList.add('-translate-x-full');
-                sidebarOverlay.classList.add('hidden');
-                document.body.style.overflow = 'auto';
-            });
-        }
-        
-        // Close sidebar when clicking outside on mobile
+        // Hide sidebar when clicking outside of it on mobile
         document.addEventListener('click', function(event) {
-            if (window.innerWidth < 768 && 
-                !sidebar.contains(event.target) && 
-                event.target !== sidebarToggle && 
-                !sidebarToggle.contains(event.target)) {
-                sidebar.classList.add('-translate-x-full');
-                sidebarOverlay.classList.add('hidden');
-                document.body.style.overflow = 'auto';
+            if (window.innerWidth < 768) {
+                const isClickInsideSidebar = sidebar.contains(event.target);
+                const isClickOnToggle = event.target === sidebarToggle || sidebarToggle.contains(event.target);
+                
+                if (!isClickInsideSidebar && !isClickOnToggle) {
+                    sidebar.classList.add('-translate-x-full');
+                    document.body.style.overflow = 'auto';
+                }
             }
         });
     });
