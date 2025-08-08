@@ -190,7 +190,7 @@ CREATE TABLE `patients` (
   `last_name` varchar(50) NOT NULL,
   `date_of_birth` date NOT NULL,
   `gender` enum('male','female','other') NOT NULL,
-  `blood_type` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') DEFAULT NULL,
+  `blood_type` enum('A+','A-','B+','B-','AB+','AB-','O+','O-','Unknown') DEFAULT NULL,
   `phone` varchar(20) NOT NULL,
   `email` varchar(100) DEFAULT NULL,
   `address` text DEFAULT NULL,
