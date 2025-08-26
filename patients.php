@@ -201,6 +201,7 @@ if (isset($_GET['edit'])) {
                 <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="blood_type" name="blood_type">
                     <option value="">Select Blood Type</option>
+                    <option value="Unknown" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'Unknown' ? 'selected' : ''; ?>>Unknown</option>
                     <option value="A+" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'A+' ? 'selected' : ''; ?>>A+</option>
                     <option value="A-" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'A-' ? 'selected' : ''; ?>>A-</option>
                     <option value="B+" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'B+' ? 'selected' : ''; ?>>B+</option>
