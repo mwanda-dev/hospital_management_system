@@ -1,7 +1,55 @@
- 
 <?php
 $page_title = "Dashboard";
 require_once 'includes/header.php';
+
+// Get system settings
+$settings_result = $conn->query("SELECT * FROM system_settings");
+$settings = [];
+while ($row = $settings_result->fetch_assoc()) {
+    $settings[$row['setting_key']] = $row['setting_value'];
+}
+
+// Default settings if not set
+$default_settings = [
+    'hospital_name' => 'MediCare Hospital',
+    'hospital_address' => '123 Medical Drive, Lusaka, Zambia',
+    'hospital_phone' => '+260 211 123456',
+    'hospital_email' => 'info@medicare.com',
+    'currency_symbol' => '$',
+    'date_format' => 'Y-m-d',
+    'time_format' => 'H:i',
+    'records_per_page' => '10',
+    'enable_sms_notifications' => '1',
+    'enable_email_notifications' => '1'
+];
+
+// Merge with defaults
+$settings = array_merge($default_settings, $settings);
+
+// Format functions based on settings
+function format_date($date, $format_setting) {
+    $formats = [
+        'Y-m-d' => 'Y-m-d',
+        'd/m/Y' => 'd/m/Y',
+        'm/d/Y' => 'm/d/Y',
+        'd-M-Y' => 'j-M-Y'
+    ];
+    $format = $formats[$format_setting] ?? 'Y-m-d';
+    return date($format, strtotime($date));
+}
+
+function format_time($time, $format_setting) {
+    $formats = [
+        'H:i' => 'H:i',
+        'h:i A' => 'h:i A'
+    ];
+    $format = $formats[$format_setting] ?? 'H:i';
+    return date($format, strtotime($time));
+}
+
+function format_currency($amount, $symbol) {
+    return $symbol . number_format($amount, 2);
+}
 
 // Get counts for dashboard
 $patients_count = $conn->query("SELECT COUNT(*) FROM patients")->fetch_row()[0];
@@ -53,7 +101,7 @@ $pending_payments = $conn->query("SELECT SUM(total_amount - paid_amount) FROM bi
         </div>
         <div>
             <p class="text-gray-500 text-sm">Pending Payments</p>
-            <h3 class="text-2xl font-bold">$<?php echo number_format($pending_payments ?? 0, 2); ?></h3>
+            <h3 class="text-2xl font-bold"><?php echo format_currency($pending_payments ?? 0, $settings['currency_symbol']); ?></h3>
         </div>
     </div>
 </div>
@@ -64,7 +112,7 @@ $pending_payments = $conn->query("SELECT SUM(total_amount - paid_amount) FROM bi
     <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
         <div class="flex justify-between items-center mb-4">
             <h3 class="font-semibold text-lg">Recent Activity</h3>
-            <a href="#" class="text-blue-500 text-sm">View All</a>
+            <a href="view-all.php" class="text-blue-500 text-sm">View All</a>
         </div>
         <div class="space-y-4">
             <?php
@@ -175,7 +223,7 @@ $pending_payments = $conn->query("SELECT SUM(total_amount - paid_amount) FROM bi
                 </div>
                 <div class="flex-1">
                     <p class="font-medium">Dr. <?php echo htmlspecialchars($appointment['doctor_last']); ?> - <?php echo htmlspecialchars($appointment['specialization']); ?></p>
-                    <p class="text-sm text-gray-500"><?php echo htmlspecialchars($appointment['patient_first'] . ' ' . $appointment['patient_last']); ?> | <?php echo date('g:i A', strtotime($appointment['start_time'])); ?></p>
+                    <p class="text-sm text-gray-500"><?php echo htmlspecialchars($appointment['patient_first'] . ' ' . $appointment['patient_last']); ?> | <?php echo format_time($appointment['start_time'], $settings['time_format']); ?></p>
                 </div>
                 <button class="text-blue-500 hover:text-blue-700">
                     <i class="fas fa-ellipsis-v"></i>

@@ -1,4 +1,3 @@
- 
 <?php
 require_once 'config.php';
 checkAuth();
@@ -34,6 +33,11 @@ $user = $user_result->fetch_assoc();
         .active-nav-item:hover {
             background-color: #2563eb;
         }
+        @media (max-width: 767px) {
+            .main-content {
+                margin-left: 0;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -42,7 +46,7 @@ $user = $user_result->fetch_assoc();
         <?php include 'includes/sidebar.php'; ?>
         
         <!-- Main Content -->
-        <div class="flex-1 ml-64 md:ml-72 overflow-y-auto">
+        <div class="flex-1 overflow-y-auto main-content md:ml-64 lg:ml-72">
             <!-- Top Navigation -->
             <header class="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
                 <div class="flex items-center space-x-4">
@@ -67,7 +71,7 @@ $user = $user_result->fetch_assoc();
                         </button>
                         <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20">
                             <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">Profile</a>
-                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">Settings</a>
+                            <a href="settings.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">Settings</a>
                             <a href="includes/logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">Logout</a>
                         </div>
                     </div>
@@ -75,4 +79,4 @@ $user = $user_result->fetch_assoc();
             </header>
             
             <!-- Main Content Area -->
-            <main class="p-6"></main>
+            <main class="p-6">

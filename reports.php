@@ -1,7 +1,22 @@
- 
 <?php
 $page_title = "Reports";
 require_once 'includes/header.php';
+
+// Get system settings
+$settings_result = $conn->query("SELECT * FROM system_settings");
+$settings = [];
+while ($row = $settings_result->fetch_assoc()) {
+    $settings[$row['setting_key']] = $row['setting_value'];
+}
+
+// Default settings if not set
+$default_settings = [
+    'hospital_name' => 'MediCare Hospital',
+    'date_format' => 'Y-m-d',
+    'time_format' => 'H:i',
+    'currency_symbol' => '$'
+];
+$settings = array_merge($default_settings, $settings);
 
 // Generate reports based on filters
 $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');
@@ -47,6 +62,23 @@ switch ($report_type) {
     default:
         $report_title = "Reports";
         break;
+}
+
+// Format dates based on system settings
+function formatSystemDate($date, $format = null) {
+    global $settings;
+    $dateFormat = $format ?: $settings['date_format'];
+    return date($dateFormat, strtotime($date));
+}
+
+function formatSystemTime($time) {
+    global $settings;
+    return date($settings['time_format'], strtotime($time));
+}
+
+function formatSystemCurrency($amount) {
+    global $settings;
+    return $settings['currency_symbol'] . number_format($amount, 2);
 }
 ?>
 
@@ -98,7 +130,7 @@ switch ($report_type) {
     </div>
     
     <div class="p-4">
-        <h4 class="text-sm text-gray-600 mb-4">Period: <?php echo date('M j, Y', strtotime($start_date)); ?> to <?php echo date('M j, Y', strtotime($end_date)); ?></h4>
+        <h4 class="text-sm text-gray-600 mb-4">Period: <?php echo formatSystemDate($start_date); ?> to <?php echo formatSystemDate($end_date); ?></h4>
         
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -139,7 +171,7 @@ switch ($report_type) {
                                 <?php echo htmlspecialchars($row['phone']); ?>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <?php echo date('M j, Y', strtotime($row['registration_date'])); ?>
+                                <?php echo formatSystemDate($row['registration_date']); ?>
                             </td>
                         </tr>
                         <?php endwhile; ?>
@@ -147,8 +179,8 @@ switch ($report_type) {
                         <?php while ($row = $report_data->fetch_assoc()): ?>
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900"><?php echo date('M j, Y', strtotime($row['appointment_date'])); ?></div>
-                                <div class="text-sm text-gray-500"><?php echo date('g:i A', strtotime($row['start_time'])); ?></div>
+                                <div class="text-sm font-medium text-gray-900"><?php echo formatSystemDate($row['appointment_date']); ?></div>
+                                <div class="text-sm text-gray-500"><?php echo formatSystemTime($row['start_time']); ?></div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($row['patient_first'] . ' ' . $row['patient_last']); ?></div>
@@ -186,10 +218,10 @@ switch ($report_type) {
                                 <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($row['patient_first'] . ' ' . $row['patient_last']); ?></div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <?php echo date('M j, Y', strtotime($row['invoice_date'])); ?>
+                                <?php echo formatSystemDate($row['invoice_date']); ?>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                $<?php echo number_format($row['total_amount'], 2); ?>
+                                <?php echo formatSystemCurrency($row['total_amount']); ?>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 

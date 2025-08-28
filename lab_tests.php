@@ -1,7 +1,31 @@
- 
 <?php
 $page_title = "Lab Tests Management";
 require_once 'includes/header.php';
+
+// Get system settings
+$settings_result = $conn->query("SELECT * FROM system_settings");
+$settings = [];
+while ($row = $settings_result->fetch_assoc()) {
+    $settings[$row['setting_key']] = $row['setting_value'];
+}
+
+// Default settings if not set
+$default_settings = [
+    'records_per_page' => '10',
+    'date_format' => 'Y-m-d',
+    'time_format' => 'H:i'
+];
+
+// Merge with defaults
+$settings = array_merge($default_settings, $settings);
+
+// Format date function based on settings
+function format_system_date($date, $settings) {
+    $date_format = $settings['date_format'] ?? 'Y-m-d';
+    $time_format = $settings['time_format'] ?? 'H:i';
+    $datetime = new DateTime($date);
+    return $datetime->format("$date_format $time_format");
+}
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -15,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         ");
         
         $stmt->bind_param(
-            "iiss",
+            "iisss",
             $_POST['patient_id'],
             $_SESSION['user_id'],
             $_POST['test_name'],
@@ -195,6 +219,17 @@ if (isset($_GET['edit'])) {
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 <?php
+                $per_page = isset($settings['records_per_page']) ? (int)$settings['records_per_page'] : 10;
+                $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+                $offset = ($page - 1) * $per_page;
+                
+                $tests_query = $conn->query("
+                    SELECT COUNT(*) as total FROM medical_records 
+                    WHERE record_type = 'lab_result'
+                ");
+                $total_tests = $tests_query->fetch_assoc()['total'];
+                $total_pages = ceil($total_tests / $per_page);
+                
                 $tests = $conn->query("
                     SELECT r.record_id, r.record_date, r.title, r.lab_results,
                            p.first_name as patient_first, p.last_name as patient_last,
@@ -204,10 +239,11 @@ if (isset($_GET['edit'])) {
                     JOIN users u ON r.doctor_id = u.user_id
                     WHERE r.record_type = 'lab_result'
                     ORDER BY r.record_date DESC
+                    LIMIT $per_page OFFSET $offset
                 ");
                 
                 while ($test = $tests->fetch_assoc()):
-                    $date = date('M j, Y g:i A', strtotime($test['record_date']));
+                    $date = format_system_date($test['record_date'], $settings);
                 ?>
                 <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo $date; ?></td>
@@ -227,6 +263,31 @@ if (isset($_GET['edit'])) {
                 <?php endwhile; ?>
             </tbody>
         </table>
+        
+        <!-- Pagination -->
+        <?php if ($total_pages > 1): ?>
+        <div class="p-4 border-t flex items-center justify-between">
+            <div>
+                <?php if ($page > 1): ?>
+                    <a href="lab_tests.php?page=<?php echo $page - 1; ?>" class="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <i class="fas fa-chevron-left mr-1"></i> Previous
+                    </a>
+                <?php endif; ?>
+            </div>
+            
+            <div class="text-sm text-gray-700">
+                Page <?php echo $page; ?> of <?php echo $total_pages; ?>
+            </div>
+            
+            <div>
+                <?php if ($page < $total_pages): ?>
+                    <a href="lab_tests.php?page=<?php echo $page + 1; ?>" class="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        Next <i class="fas fa-chevron-right ml-1"></i>
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 <?php endif; ?>

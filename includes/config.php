@@ -1,5 +1,9 @@
- 
 <?php
+// To avoid whitespace and headers already sent errors
+ob_start();
+// Start session
+session_start();
+
 // Database configuration
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
@@ -17,9 +21,6 @@ if ($conn->connect_error) {
 // Set charset
 $conn->set_charset("utf8mb4");
 
-// Start session
-session_start();
-
 // Check if user is logged in
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
@@ -28,7 +29,7 @@ function isLoggedIn() {
 // Redirect if not logged in
 function checkAuth() {
     if (!isLoggedIn()) {
-        header("Location: login.php");
+        header("Location: includes/login.php");
         exit();
     }
 }

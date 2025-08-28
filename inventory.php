@@ -1,7 +1,35 @@
- 
 <?php
 $page_title = "Inventory Management";
 require_once 'includes/header.php';
+
+// Get system settings
+$settings_result = $conn->query("SELECT * FROM system_settings");
+$settings = [];
+while ($row = $settings_result->fetch_assoc()) {
+    $settings[$row['setting_key']] = $row['setting_value'];
+}
+
+// Default settings if not set
+$default_settings = [
+    'hospital_name' => 'MediCare Hospital',
+    'hospital_address' => '123 Medical Drive, Lusaka, Zambia',
+    'hospital_phone' => '+260 211 123456',
+    'hospital_email' => 'info@medicare.com',
+    'currency_symbol' => '$',
+    'date_format' => 'Y-m-d',
+    'time_format' => 'H:i',
+    'records_per_page' => '10',
+    'enable_sms_notifications' => '1',
+    'enable_email_notifications' => '1'
+];
+
+// Merge with defaults
+$settings = array_merge($default_settings, $settings);
+
+// Format functions
+function format_currency($amount, $symbol) {
+    return $symbol . number_format($amount, 2);
+}
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -275,10 +303,10 @@ if (isset($_GET['edit'])) {
                         <?php echo $item['quantity_in_stock']; ?> <?php echo htmlspecialchars($item['unit_of_measure']); ?>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        $<?php echo number_format($item['cost_per_unit'], 2); ?>
+                        <?php echo format_currency($item['cost_per_unit'], $settings['currency_symbol']); ?>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        $<?php echo number_format($item['selling_price'], 2); ?>
+                        <?php echo format_currency($item['selling_price'], $settings['currency_symbol']); ?>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $status_class; ?>">

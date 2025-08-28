@@ -1,10 +1,14 @@
- 
-<div class="sidebar bg-white w-64 md:w-72 shadow-lg fixed h-full overflow-y-auto">
-    <div class="p-4 flex items-center space-x-3 border-b">
-        <div class="bg-blue-500 p-2 rounded-lg">
-            <i class="fas fa-hospital text-white text-2xl"></i>
+<div class="sidebar bg-white w-64 md:w-72 shadow-lg fixed h-full overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out z-20">
+    <div class="p-4 flex items-center justify-between border-b">
+        <div class="flex items-center space-x-3">
+            <div class="bg-blue-500 p-2 rounded-lg">
+                <i class="fas fa-hospital text-white text-2xl"></i>
+            </div>
+            <h1 class="text-xl font-bold text-gray-800">MediCare HMS</h1>
         </div>
-        <h1 class="text-xl font-bold text-gray-800">MediCare HMS</h1>
+        <button id="sidebarClose" class="text-gray-500 hover:text-gray-700 md:hidden">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
     
     <div class="p-4">
@@ -95,3 +99,40 @@
         </nav>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarClose = document.getElementById('sidebarClose');
+        
+        // Show sidebar when toggle button is clicked
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.remove('-translate-x-full');
+                document.body.style.overflow = 'hidden';
+            });
+        }
+        
+        // Hide sidebar when close button is clicked
+        if (sidebarClose) {
+            sidebarClose.addEventListener('click', function() {
+                sidebar.classList.add('-translate-x-full');
+                document.body.style.overflow = 'auto';
+            });
+        }
+        
+        // Hide sidebar when clicking outside of it on mobile
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth < 768) {
+                const isClickInsideSidebar = sidebar.contains(event.target);
+                const isClickOnToggle = event.target === sidebarToggle || sidebarToggle.contains(event.target);
+                
+                if (!isClickInsideSidebar && !isClickOnToggle) {
+                    sidebar.classList.add('-translate-x-full');
+                    document.body.style.overflow = 'auto';
+                }
+            }
+        });
+    });
+</script>
