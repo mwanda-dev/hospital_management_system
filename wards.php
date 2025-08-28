@@ -5,7 +5,100 @@ require_once 'includes/header.php';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (isset($_POST['add_ward'])) {
+    if (isset($_POST['admit_patient'])) {
+        // Admit patient to bed
+        $patient_id = intval($_POST['patient_id']);
+        $bed_id = intval($_POST['bed_id']);
+        $admitting_doctor_id = $_SESSION['user_id'];
+        $reason = $_POST['reason'];
+        $notes = $_POST['notes'] ?? '';
+        
+        // Check if bed is available
+        $bed_check = $conn->prepare("SELECT b.*, w.ward_name FROM beds b JOIN wards w ON b.ward_id = w.ward_id WHERE b.bed_id = ? AND b.status = 'available'");
+        $bed_check->bind_param("i", $bed_id);
+        $bed_check->execute();
+        $bed_result = $bed_check->get_result();
+        
+        if ($bed_result->num_rows > 0) {
+            $bed_info = $bed_result->fetch_assoc();
+            
+            // Check if patient is already admitted
+            $patient_check = $conn->prepare("SELECT * FROM admissions WHERE patient_id = ? AND status = 'admitted'");
+            $patient_check->bind_param("i", $patient_id);
+            $patient_check->execute();
+            
+            if ($patient_check->get_result()->num_rows == 0) {
+                // Start transaction
+                $conn->begin_transaction();
+                
+                try {
+                    // Insert admission record
+                    $stmt = $conn->prepare("
+                        INSERT INTO admissions (
+                            patient_id, bed_id, admitting_doctor_id, reason, notes
+                        ) VALUES (?, ?, ?, ?, ?)
+                    ");
+                    $stmt->bind_param("iiiss", $patient_id, $bed_id, $admitting_doctor_id, $reason, $notes);
+                    $stmt->execute();
+                    
+                    // Update bed status to occupied
+                    $stmt = $conn->prepare("UPDATE beds SET status = 'occupied' WHERE bed_id = ?");
+                    $stmt->bind_param("i", $bed_id);
+                    $stmt->execute();
+                    
+                    $conn->commit();
+                    $_SESSION['message'] = "Patient admitted successfully to " . $bed_info['ward_name'] . " - Bed " . $bed_info['bed_number'] . "!";
+                    header("Location: wards.php");
+                    exit();
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    $error = "Error admitting patient: " . $e->getMessage();
+                }
+            } else {
+                $error = "Patient is already admitted to another bed!";
+            }
+        } else {
+            $error = "Selected bed is not available!";
+        }
+    } elseif (isset($_POST['discharge_patient'])) {
+        // Discharge patient
+        $admission_id = intval($_POST['admission_id']);
+        
+        // Start transaction
+        $conn->begin_transaction();
+        
+        try {
+            // Get admission details
+            $admission_check = $conn->prepare("SELECT bed_id FROM admissions WHERE admission_id = ? AND status = 'admitted'");
+            $admission_check->bind_param("i", $admission_id);
+            $admission_check->execute();
+            $admission_result = $admission_check->get_result();
+            
+            if ($admission_result->num_rows > 0) {
+                $admission = $admission_result->fetch_assoc();
+                
+                // Update admission status and discharge date
+                $stmt = $conn->prepare("UPDATE admissions SET status = 'discharged', discharge_date = NOW() WHERE admission_id = ?");
+                $stmt->bind_param("i", $admission_id);
+                $stmt->execute();
+                
+                // Update bed status to available
+                $stmt = $conn->prepare("UPDATE beds SET status = 'available' WHERE bed_id = ?");
+                $stmt->bind_param("i", $admission['bed_id']);
+                $stmt->execute();
+                
+                $conn->commit();
+                $_SESSION['message'] = "Patient discharged successfully!";
+                header("Location: wards.php");
+                exit();
+            } else {
+                $error = "Admission record not found!";
+            }
+        } catch (Exception $e) {
+            $conn->rollback();
+            $error = "Error discharging patient: " . $e->getMessage();
+        }
+    } elseif (isset($_POST['add_ward'])) {
         // Add new ward
         $stmt = $conn->prepare("
             INSERT INTO wards (
@@ -107,6 +200,8 @@ if (isset($_GET['edit'])) {
     }
 } elseif (isset($_GET['add'])) {
     $editing = true;
+} elseif (isset($_GET['admit'])) {
+    $admitting = true;
 }
 ?>
 
@@ -165,12 +260,97 @@ if (isset($_GET['edit'])) {
         </div>
     </form>
 </div>
+<?php elseif (isset($admitting)): ?>
+<!-- Patient Admission Form -->
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h3 class="font-semibold text-lg mb-4">Admit Patient to Ward</h3>
+    
+    <!-- Patient Search -->
+    <div class="mb-6">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Search Patient</label>
+        <div class="relative">
+            <input type="text" id="patientSearch" placeholder="Search by name, phone, or patient ID..." 
+                class="shadow appearance-none border rounded w-full py-2 px-3 pl-10 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-search text-gray-400"></i>
+            </div>
+        </div>
+        <div id="patientResults" class="mt-2 bg-white border border-gray-200 rounded-lg shadow-lg hidden max-h-60 overflow-y-auto"></div>
+    </div>
+    
+    <form method="POST" action="" id="admissionForm">
+        <input type="hidden" id="selectedPatientId" name="patient_id" required>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Selected Patient</label>
+                <div id="selectedPatientInfo" class="p-3 bg-gray-50 border rounded text-sm text-gray-600">
+                    No patient selected
+                </div>
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="ward_select">Ward</label>
+                <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                    id="ward_select" name="ward_id" required onchange="loadAvailableBeds(this.value)">
+                    <option value="">Select Ward</option>
+                    <?php
+                    $wards_query = $conn->query("
+                        SELECT w.*, 
+                               COUNT(b.bed_id) as total_beds,
+                               SUM(CASE WHEN b.status = 'available' THEN 1 ELSE 0 END) as available_beds
+                        FROM wards w
+                        LEFT JOIN beds b ON w.ward_id = b.ward_id
+                        GROUP BY w.ward_id
+                        HAVING available_beds > 0
+                        ORDER BY w.ward_name
+                    ");
+                    while ($ward = $wards_query->fetch_assoc()):
+                    ?>
+                        <option value="<?php echo $ward['ward_id']; ?>" data-available="<?php echo $ward['available_beds']; ?>">
+                            <?php echo htmlspecialchars($ward['ward_name']); ?> (<?php echo $ward['available_beds']; ?> beds available)
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="bed_id">Available Beds</label>
+                <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                    id="bed_id" name="bed_id" required>
+                    <option value="">Select Ward First</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="reason">Admission Reason</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                    id="reason" name="reason" type="text" placeholder="Reason for admission" required>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="notes">Notes</label>
+            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                id="notes" name="notes" rows="3" placeholder="Additional notes (optional)"></textarea>
+        </div>
+        
+        <div class="mt-6 flex justify-end space-x-4">
+            <a href="wards.php" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                Cancel
+            </a>
+            <button type="submit" name="admit_patient" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                Admit Patient
+            </button>
+        </div>
+    </form>
+</div>
 <?php else: ?>
 <!-- Wards List -->
 <div class="bg-white rounded-lg shadow overflow-hidden">
     <div class="p-4 border-b flex justify-between items-center">
         <h3 class="font-semibold">Wards</h3>
         <div class="flex space-x-2">
+            <a href="wards.php?admit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                <i class="fas fa-user-plus"></i> Admit Patient
+            </a>
             <a href="wards.php?add" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                 <i class="fas fa-plus"></i> Add Ward
             </a>
@@ -234,6 +414,19 @@ if (isset($_GET['edit'])) {
     </div>
 </div>
 
+<!-- Patient Search Section -->
+<div class="bg-white rounded-lg shadow p-6 mt-6">
+    <h3 class="font-semibold text-lg mb-4">Find Patient Location</h3>
+    <div class="relative">
+        <input type="text" id="patientLocationSearch" placeholder="Search for admitted patients..." 
+            class="shadow appearance-none border rounded w-full py-2 px-3 pl-10 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fas fa-search text-gray-400"></i>
+        </div>
+    </div>
+    <div id="patientLocationResults" class="mt-4 space-y-2"></div>
+</div>
+
 <!-- Beds Management -->
 <div class="bg-white rounded-lg shadow overflow-hidden mt-6">
     <div class="p-4 border-b flex justify-between items-center">
@@ -249,6 +442,7 @@ if (isset($_GET['edit'])) {
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admission Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -256,7 +450,7 @@ if (isset($_GET['edit'])) {
                 $beds = $conn->query("
                     SELECT b.*, w.ward_name,
                            p.first_name as patient_first, p.last_name as patient_last,
-                           a.admission_date
+                           a.admission_date, a.admission_id, a.reason
                     FROM beds b
                     JOIN wards w ON b.ward_id = w.ward_id
                     LEFT JOIN admissions a ON b.bed_id = a.bed_id AND a.status = 'admitted'
@@ -295,6 +489,18 @@ if (isset($_GET['edit'])) {
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <?php echo $bed['status'] == 'occupied' ? date('M j, Y', strtotime($bed['admission_date'])) : '-'; ?>
                     </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <?php if ($bed['status'] == 'occupied' && $bed['admission_id']): ?>
+                            <form method="POST" action="" class="inline" onsubmit="return confirm('Are you sure you want to discharge this patient?');">
+                                <input type="hidden" name="admission_id" value="<?php echo $bed['admission_id']; ?>">
+                                <button type="submit" name="discharge_patient" class="text-red-600 hover:text-red-900">
+                                    <i class="fas fa-sign-out-alt"></i> Discharge
+                                </button>
+                            </form>
+                        <?php else: ?>
+                            <span class="text-gray-400">-</span>
+                        <?php endif; ?>
+                    </td>
                 </tr>
                 <?php endwhile; ?>
             </tbody>
@@ -302,5 +508,162 @@ if (isset($_GET['edit'])) {
     </div>
 </div>
 <?php endif; ?>
+
+<script>
+// Patient search functionality for admission
+let patientSearchTimeout;
+document.getElementById('patientSearch')?.addEventListener('input', function() {
+    clearTimeout(patientSearchTimeout);
+    const searchTerm = this.value.trim();
+    
+    if (searchTerm.length < 2) {
+        document.getElementById('patientResults').classList.add('hidden');
+        return;
+    }
+    
+    patientSearchTimeout = setTimeout(() => {
+        fetch('ajax/search_patients.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'search=' + encodeURIComponent(searchTerm)
+        })
+        .then(response => response.json())
+        .then(data => {
+            const resultsDiv = document.getElementById('patientResults');
+            
+            if (data.length > 0) {
+                let html = '';
+                data.forEach(patient => {
+                    html += `
+                        <div class="p-3 hover:bg-gray-50 cursor-pointer border-b" onclick="selectPatient(${patient.patient_id}, '${patient.first_name}', '${patient.last_name}', '${patient.phone}', '${patient.email}')">
+                            <div class="font-medium">${patient.first_name} ${patient.last_name}</div>
+                            <div class="text-sm text-gray-500">ID: PAT-${String(patient.patient_id).padStart(4, '0')} | ${patient.phone} | ${patient.email}</div>
+                        </div>
+                    `;
+                });
+                resultsDiv.innerHTML = html;
+                resultsDiv.classList.remove('hidden');
+            } else {
+                resultsDiv.innerHTML = '<div class="p-3 text-gray-500">No patients found</div>';
+                resultsDiv.classList.remove('hidden');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }, 300);
+});
+
+// Select patient function
+function selectPatient(id, firstName, lastName, phone, email) {
+    document.getElementById('selectedPatientId').value = id;
+    document.getElementById('selectedPatientInfo').innerHTML = `
+        <div class="font-medium">${firstName} ${lastName}</div>
+        <div class="text-xs text-gray-500">ID: PAT-${String(id).padStart(4, '0')} | ${phone} | ${email}</div>
+    `;
+    document.getElementById('patientResults').classList.add('hidden');
+    document.getElementById('patientSearch').value = `${firstName} ${lastName}`;
+}
+
+// Load available beds when ward is selected
+function loadAvailableBeds(wardId) {
+    const bedSelect = document.getElementById('bed_id');
+    
+    if (!wardId) {
+        bedSelect.innerHTML = '<option value="">Select Ward First</option>';
+        return;
+    }
+    
+    fetch('ajax/get_available_beds.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'ward_id=' + wardId
+    })
+    .then(response => response.json())
+    .then(data => {
+        let html = '<option value="">Select Bed</option>';
+        data.forEach(bed => {
+            html += `<option value="${bed.bed_id}">Bed ${bed.bed_number}</option>`;
+        });
+        bedSelect.innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        bedSelect.innerHTML = '<option value="">Error loading beds</option>';
+    });
+}
+
+// Patient location search functionality
+let locationSearchTimeout;
+document.getElementById('patientLocationSearch')?.addEventListener('input', function() {
+    clearTimeout(locationSearchTimeout);
+    const searchTerm = this.value.trim();
+    
+    if (searchTerm.length < 2) {
+        document.getElementById('patientLocationResults').innerHTML = '';
+        return;
+    }
+    
+    locationSearchTimeout = setTimeout(() => {
+        fetch('ajax/search_patient_location.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'search=' + encodeURIComponent(searchTerm)
+        })
+        .then(response => response.json())
+        .then(data => {
+            const resultsDiv = document.getElementById('patientLocationResults');
+            
+            if (data.length > 0) {
+                let html = '';
+                data.forEach(patient => {
+                    html += `
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-medium text-blue-900">${patient.first_name} ${patient.last_name}</div>
+                                    <div class="text-sm text-blue-700">ID: PAT-${String(patient.patient_id).padStart(4, '0')}</div>
+                                    <div class="text-sm text-blue-600 mt-1">
+                                        <i class="fas fa-map-marker-alt"></i> ${patient.ward_name} - Bed ${patient.bed_number}
+                                    </div>
+                                    <div class="text-xs text-blue-500 mt-1">
+                                        Admitted: ${new Date(patient.admission_date).toLocaleDateString()}
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Admitted</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                resultsDiv.innerHTML = html;
+            } else {
+                resultsDiv.innerHTML = '<div class="text-gray-500 text-center py-4">No admitted patients found matching your search</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('patientLocationResults').innerHTML = '<div class="text-red-500 text-center py-4">Error searching patients</div>';
+        });
+    }, 300);
+});
+
+// Hide search results when clicking outside
+document.addEventListener('click', function(event) {
+    const patientSearch = document.getElementById('patientSearch');
+    const patientResults = document.getElementById('patientResults');
+    
+    if (patientSearch && patientResults && !patientSearch.contains(event.target) && !patientResults.contains(event.target)) {
+        patientResults.classList.add('hidden');
+    }
+});
+</script>
 
 <?php require_once 'includes/footer.php'; ?>
