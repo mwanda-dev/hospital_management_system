@@ -1,7 +1,26 @@
- 
 <?php
 $page_title = "User Management";
 require_once 'includes/header.php';
+
+// Get system settings
+$settings_result = $conn->query("SELECT * FROM system_settings");
+$settings = [];
+while ($row = $settings_result->fetch_assoc()) {
+    $settings[$row['setting_key']] = $row['setting_value'];
+}
+
+// Default settings if not set
+$default_settings = [
+    'hospital_name' => 'MediCare Hospital',
+    'date_format' => 'Y-m-d'
+];
+$settings = array_merge($default_settings, $settings);
+
+// Format dates based on system settings
+function formatSystemDate($date) {
+    global $settings;
+    return date($settings['date_format'], strtotime($date));
+}
 
 // Check if user is admin
 if ($user['role'] != 'admin') {

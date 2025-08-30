@@ -2,6 +2,23 @@
 $page_title = "All Activities";
 require_once 'includes/header.php';
 
+// Get system settings
+$settings_result = $conn->query("SELECT * FROM system_settings");
+$settings = [];
+while ($row = $settings_result->fetch_assoc()) {
+    $settings[$row['setting_key']] = $row['setting_value'];
+}
+
+// Default settings if not set
+$default_settings = [
+    'records_per_page' => '15',
+    'date_format' => 'Y-m-d',
+    'time_format' => 'H:i'
+];
+
+// Merge with defaults
+$settings = array_merge($default_settings, $settings);
+
 // Define the time_elapsed_string function if not already defined
 if (!function_exists('time_elapsed_string')) {
     function time_elapsed_string($datetime, $full = false) {
@@ -49,8 +66,16 @@ if (!function_exists('time_elapsed_string')) {
     }
 }
 
+// Format date function based on settings
+function format_system_date($date, $settings) {
+    $date_format = $settings['date_format'] ?? 'Y-m-d';
+    $time_format = $settings['time_format'] ?? 'H:i';
+    $datetime = new DateTime($date);
+    return $datetime->format("$date_format $time_format");
+}
+
 // Pagination variables
-$per_page = 15;
+$per_page = isset($settings['records_per_page']) ? (int)$settings['records_per_page'] : 15;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $per_page;
 
@@ -153,6 +178,7 @@ $activities = $conn->query("
             <?php if ($activities->num_rows > 0): ?>
                 <?php while ($activity = $activities->fetch_assoc()): 
                     $time_ago = time_elapsed_string($activity['date']);
+                    $formatted_date = format_system_date($activity['date'], $settings);
                     $icon_class = '';
                     $icon = '';
                     
@@ -187,7 +213,7 @@ $activities = $conn->query("
                         <div class="flex-1">
                             <p class="font-medium"><?php echo htmlspecialchars($activity['first_name'] . ' ' . $activity['last_name']); ?></p>
                             <p class="text-sm text-gray-600"><?php echo htmlspecialchars($activity['description']); ?></p>
-                            <p class="text-xs text-gray-500 mt-1"><?php echo $time_ago; ?></p>
+                            <p class="text-xs text-gray-500 mt-1"><?php echo $formatted_date; ?> (<?php echo $time_ago; ?>)</p>
                         </div>
                     </div>
                 </div>
