@@ -7,7 +7,7 @@ session_start();
 // Database configuration
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
-define('DB_PASS', '20042016');
+define('DB_PASS', '');
 define('DB_NAME', 'hospital_management');
 
 // Create connection
