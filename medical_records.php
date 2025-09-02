@@ -776,4 +776,5 @@ function formatSystemDate($dateString, $includeTime = false) {
     </div>
 </div>
 <?php endif; ?>
+
 <?php require_once 'includes/footer.php'; ?>
