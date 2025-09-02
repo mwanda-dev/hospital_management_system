@@ -283,5 +283,3 @@ function togglePassword(fieldId, iconSpan) {
     }
 }
 </script>
-
-
