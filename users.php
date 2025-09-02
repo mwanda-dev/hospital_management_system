@@ -1,34 +1,29 @@
 <?php
 $page_title = "User Management";
 require_once 'includes/header.php';
-
 // Get system settings
 $settings_result = $conn->query("SELECT * FROM system_settings");
 $settings = [];
 while ($row = $settings_result->fetch_assoc()) {
     $settings[$row['setting_key']] = $row['setting_value'];
 }
-
 // Default settings if not set
 $default_settings = [
     'hospital_name' => 'MediCare Hospital',
     'date_format' => 'Y-m-d'
 ];
 $settings = array_merge($default_settings, $settings);
-
 // Format dates based on system settings
 function formatSystemDate($date) {
     global $settings;
     return date($settings['date_format'], strtotime($date));
 }
-
 // Check if user is admin
 if ($user['role'] != 'admin') {
     $_SESSION['error'] = "You don't have permission to access this page.";
     header("Location: index.php");
     exit();
 }
-
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['add_user'])) {
@@ -127,7 +122,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 }
-
 // Handle delete action
 if (isset($_GET['delete'])) {
     // Prevent deleting yourself
@@ -149,7 +143,6 @@ if (isset($_GET['delete'])) {
         $error = "Error deleting user: " . $conn->error;
     }
 }
-
 // Display messages
 if (isset($_SESSION['message'])) {
     echo '<div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
@@ -157,24 +150,20 @@ if (isset($_SESSION['message'])) {
     </div>';
     unset($_SESSION['message']);
 }
-
 if (isset($_SESSION['error'])) {
     echo '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
         <span class="block sm:inline">' . $_SESSION['error'] . '</span>
     </div>';
     unset($_SESSION['error']);
 }
-
 if (isset($error)) {
     echo '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
         <span class="block sm:inline">' . $error . '</span>
     </div>';
 }
-
 // Check if we're adding or editing a user
 $editing = false;
 $user_data = null;
-
 if (isset($_GET['edit'])) {
     $editing = true;
     $user_id = intval($_GET['edit']);
@@ -193,7 +182,6 @@ if (isset($_GET['edit'])) {
     $editing = true;
 }
 ?>
-
 <?php if ($editing): ?>
 <!-- User Form -->
 <div class="bg-white rounded-lg shadow p-6 mb-6">
@@ -304,8 +292,16 @@ if (isset($_GET['edit'])) {
     <div class="p-4 border-b flex justify-between items-center">
         <h3 class="font-semibold">System Users</h3>
         <div class="flex space-x-2">
-            <a href="users.php?add" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                <i class="fas fa-plus"></i> Add User
+            <!-- Search Box -->
+            <div class="relative">
+                <input type="text" id="userSearch" placeholder="Search users..." 
+                    class="border rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
+            </div>
+            <a href="users.php?add" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded flex items-center">
+                <i class="fas fa-plus mr-2"></i> Add User
             </a>
         </div>
     </div>
@@ -314,6 +310,7 @@ if (isset($_GET['edit'])) {
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
@@ -321,7 +318,7 @@ if (isset($_GET['edit'])) {
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody id="userTableBody" class="bg-white divide-y divide-gray-200">
                 <?php
                 $users = $conn->query("SELECT * FROM users ORDER BY last_name, first_name");
                 
@@ -334,7 +331,8 @@ if (isset($_GET['edit'])) {
                         case 'on_leave': $status_class = 'bg-yellow-100 text-yellow-800'; break;
                     }
                 ?>
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 user-row" data-search="<?php echo htmlspecialchars(strtolower($usr['first_name'] . ' ' . $usr['last_name'] . ' ' . $usr['username'] . ' ' . $usr['email'] . ' ' . $usr['role'] . ' ' . $usr['status'] . ' USR-' . str_pad($usr['user_id'], 4, '0', STR_PAD_LEFT))); ?>">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">USR-<?php echo str_pad($usr['user_id'], 4, '0', STR_PAD_LEFT); ?></td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
                             <div class="flex-shrink-0 h-10 w-10">
@@ -360,17 +358,58 @@ if (isset($_GET['edit'])) {
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <a href="users.php?edit=<?php echo $usr['user_id']; ?>" class="text-blue-600 hover:text-blue-900 mr-3">Edit</a>
-                        <?php if ($usr['user_id'] != $_SESSION['user_id']): ?>
-                            <a href="users.php?delete=<?php echo $usr['user_id']; ?>" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure you want to delete this user?');">Delete</a>
-                        <?php endif; ?>
+                        <div class="flex space-x-2">
+                            <a href="users.php?edit=<?php echo $usr['user_id']; ?>" class="text-blue-600 hover:text-blue-900 flex items-center" title="Edit">
+                                <i class="fas fa-edit mr-1"></i> Edit
+                            </a>
+                            <?php if ($usr['user_id'] != $_SESSION['user_id']): ?>
+                                <a href="users.php?delete=<?php echo $usr['user_id']; ?>" class="text-red-600 hover:text-red-900 flex items-center" title="Delete" 
+                                   onclick="return confirm('Are you sure you want to delete this user?');">
+                                    <i class="fas fa-trash-alt mr-1"></i> Delete
+                                </a>
+                            <?php endif; ?>
+                        </div>
                     </td>
                 </tr>
                 <?php endwhile; ?>
             </tbody>
         </table>
+        <div id="noResults" class="hidden p-4 text-center text-gray-500">
+            <i class="fas fa-search fa-2x mb-2"></i>
+            <p>No users found matching your search criteria.</p>
+        </div>
     </div>
 </div>
+<!-- JavaScript for Live Search -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('userSearch');
+    const userRows = document.querySelectorAll('.user-row');
+    const noResults = document.getElementById('noResults');
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        let visibleCount = 0;
+        
+        userRows.forEach(row => {
+            const searchData = row.getAttribute('data-search');
+            
+            if (searchData.includes(searchTerm)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Show no results message if no rows are visible
+        if (visibleCount === 0 && searchTerm !== '') {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
+        }
+    });
+});
+</script>
 <?php endif; ?>
-
 <?php require_once 'includes/footer.php'; ?>
