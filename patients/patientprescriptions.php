@@ -533,7 +533,6 @@ if (isset($_GET['logout'])) {
     <div class="container main-content">
         <div class="page-header">
             <h1 class="page-title">My Prescriptions</h1>
-            <button class="btn btn-primary"><i class="fas fa-plus"></i> Request Refill</button>
         </div>
         
         <div class="filter-bar">
@@ -577,33 +576,25 @@ if (isset($_GET['logout'])) {
             <div class="card-header">
                 <h3>Current Prescriptions</h3>
             </div>
-            
             <?php 
             $current_prescriptions = array_filter($prescriptions, function($prescription) {
                 return $prescription['status'] === 'active';
             });
-            
             if (empty($current_prescriptions)): ?>
-            <div class="no-prescriptions">
-                <i class="fas fa-check-circle"></i>
-                <p>No active prescriptions</p>
-            </div>
+                <div class="no-prescriptions">
+                    <i class="fas fa-check-circle"></i>
+                    <p>No active prescriptions</p>
+                </div>
             <?php else: ?>
                 <?php foreach ($current_prescriptions as $prescription_id => $prescription): ?>
-                    <?php if (isset($prescription_items[$prescription_id])): ?>
-                        <?php foreach ($prescription_items[$prescription_id] as $item): ?>
-                        <div class="prescription-item" data-status="active" data-date="<?php echo $prescription['prescription_date']; ?>">
+                    <div class="prescription-item" data-status="active" data-date="<?php echo $prescription['prescription_date']; ?>" style="flex-direction: column; align-items: stretch;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
                             <div class="prescription-icon">
                                 <i class="fas fa-pills"></i>
                             </div>
                             <div class="prescription-info">
-                                <h4><?php echo htmlspecialchars($item['medication_name']); ?></h4>
-                                <p><?php echo htmlspecialchars($item['notes'] ?? 'No description'); ?></p>
+                                <h4>Prescription by Dr. <?php echo htmlspecialchars($prescription['first_name'] . ' ' . $prescription['last_name']); ?></h4>
                                 <div class="prescription-meta">
-                                    <span class="meta-item"><i class="fas fa-weight"></i> <?php echo htmlspecialchars($item['dosage']); ?></span>
-                                    <span class="meta-item"><i class="fas fa-clock"></i> <?php echo htmlspecialchars($item['frequency']); ?></span>
-                                    <span class="meta-item"><i class="fas fa-calendar"></i> <?php echo htmlspecialchars($item['duration']); ?></span>
-                                    <span class="meta-item"><i class="fas fa-user-md"></i> Dr. <?php echo htmlspecialchars($prescription['first_name'] . ' ' . $prescription['last_name']); ?></span>
                                     <span class="meta-item"><i class="fas fa-calendar-alt"></i> <?php echo date('M j, Y', strtotime($prescription['prescription_date'])); ?></span>
                                     <?php if ($prescription['refills_remaining'] > 0): ?>
                                     <span class="meta-item"><i class="fas fa-sync-alt"></i> <?php echo $prescription['refills_remaining']; ?> refills remaining</span>
@@ -616,15 +607,33 @@ if (isset($_GET['logout'])) {
                                 <?php endif; ?>
                             </div>
                             <span class="status active">Active</span>
-                            <div class="prescription-actions">
-                                <button class="btn btn-outline">Details</button>
-                                <?php if ($prescription['refills_remaining'] > 0): ?>
-                                <button class="btn btn-primary">Request Refill</button>
-                                <?php endif; ?>
-                            </div>
                         </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                        <div style="margin-top: 1rem;">
+                            <strong>Medications:</strong>
+                            <ul style="margin: 0.5rem 0 0 1.5rem;">
+                                <?php if (isset($prescription_items[$prescription_id])): ?>
+                                    <?php foreach ($prescription_items[$prescription_id] as $item): ?>
+                                        <li style="margin-bottom: 0.5rem;">
+                                            <strong><?php echo htmlspecialchars($item['medication_name']); ?></strong> -
+                                            <?php echo htmlspecialchars($item['dosage']); ?>,
+                                            <?php echo htmlspecialchars($item['frequency']); ?>,
+                                            <?php echo htmlspecialchars($item['duration']); ?>
+                                            <?php if (!empty($item['notes'])): ?>
+                                                <br><span style="color: #6b7280; font-size: 0.95em;">Notes: <?php echo htmlspecialchars($item['notes']); ?></span>
+                                            <?php endif; ?>
+                                        </li>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <li>No medications found for this prescription.</li>
+                                <?php endif; ?>
+                            </ul>
+                        </div>
+                        <div class="prescription-actions" style="margin-top: 1rem;">
+                            <button class="btn btn-outline">Details</button>
+                            <?php if ($prescription['refills_remaining'] > 0): ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 <?php endforeach; ?>
             <?php endif; ?>
         </div>
@@ -767,16 +776,7 @@ if (isset($_GET['logout'])) {
             statusFilter.addEventListener('change', filterPrescriptions);
             sortFilter.addEventListener('change', filterPrescriptions);
             searchInput.addEventListener('keyup', filterPrescriptions);
-            
-            // Request refill buttons
-            const refillButtons = document.querySelectorAll('.btn-primary');
-            refillButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    if (this.textContent.includes('Request Refill')) {
-                        alert('Refill request submitted!');
-                    }
-                });
-            });
+        
         });
     </script>
 </body>
