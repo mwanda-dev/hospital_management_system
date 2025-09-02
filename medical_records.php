@@ -1,14 +1,12 @@
 <?php
 $page_title = "Medical Records";
 require_once 'includes/header.php';
-
 // Get system settings
 $settings_result = $conn->query("SELECT * FROM system_settings");
 $settings = [];
 while ($row = $settings_result->fetch_assoc()) {
     $settings[$row['setting_key']] = $row['setting_value'];
 }
-
 // Default settings if not set
 $default_settings = [
     'hospital_name' => 'MediCare Hospital',
@@ -22,14 +20,11 @@ $default_settings = [
     'enable_sms_notifications' => '1',
     'enable_email_notifications' => '1'
 ];
-
 // Merge with defaults
 $settings = array_merge($default_settings, $settings);
-
 // Check if viewing records for a specific patient
 $patient_id = isset($_GET['patient_id']) ? intval($_GET['patient_id']) : 0;
 $patient = null;
-
 if ($patient_id > 0) {
     $stmt = $conn->prepare("SELECT * FROM patients WHERE patient_id = ?");
     $stmt->bind_param("i", $patient_id);
@@ -43,7 +38,6 @@ if ($patient_id > 0) {
         exit();
     }
 }
-
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['add_record'])) {
@@ -116,10 +110,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } else {
             $error = "Error updating medical record: " . $conn->error;
         }
+    } elseif (isset($_POST['add_prescription'])) {
+        // Add new prescription
+        $stmt = $conn->prepare("
+            INSERT INTO prescriptions (
+                patient_id, doctor_id, prescription_date, status, 
+                instructions, refills_remaining
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        
+        $stmt->bind_param(
+            "iisssi",
+            $_POST['patient_id'],
+            $_SESSION['user_id'],
+            $_POST['prescription_date'],
+            $_POST['status'],
+            $_POST['instructions'],
+            $_POST['refills_remaining']
+        );
+        
+        if ($stmt->execute()) {
+            $_SESSION['message'] = "Prescription added successfully!";
+            header("Location: medical_records.php?patient_id=" . $_POST['patient_id']);
+            exit();
+        } else {
+            $error = "Error adding prescription: " . $conn->error;
+        }
     }
 }
-
-// Handle delete action
+// Handle delete actions
 if (isset($_GET['delete'])) {
     $record_id = intval($_GET['delete']);
     $patient_id = intval($_GET['patient_id']);
@@ -136,6 +155,21 @@ if (isset($_GET['delete'])) {
     }
 }
 
+if (isset($_GET['delete_prescription'])) {
+    $prescription_id = intval($_GET['delete_prescription']);
+    $patient_id = intval($_GET['patient_id']);
+    
+    $stmt = $conn->prepare("DELETE FROM prescriptions WHERE prescription_id = ?");
+    $stmt->bind_param("i", $prescription_id);
+    
+    if ($stmt->execute()) {
+        $_SESSION['message'] = "Prescription deleted successfully!";
+        header("Location: medical_records.php?patient_id=" . $patient_id);
+        exit();
+    } else {
+        $error = "Error deleting prescription: " . $conn->error;
+    }
+}
 // Display messages
 if (isset($_SESSION['message'])) {
     echo '<div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
@@ -143,24 +177,20 @@ if (isset($_SESSION['message'])) {
     </div>';
     unset($_SESSION['message']);
 }
-
 if (isset($_SESSION['error'])) {
     echo '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
         <span class="block sm:inline">' . $_SESSION['error'] . '</span>
     </div>';
     unset($_SESSION['error']);
 }
-
 if (isset($error)) {
     echo '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
         <span class="block sm:inline">' . $error . '</span>
     </div>';
 }
-
 // Check if we're adding or editing a record
 $editing = false;
 $record = null;
-
 if (isset($_GET['edit'])) {
     $editing = true;
     $record_id = intval($_GET['edit']);
@@ -186,7 +216,6 @@ if (isset($_GET['edit'])) {
 } elseif (isset($_GET['add']) && $patient_id > 0) {
     $editing = true;
 }
-
 // Function to format date according to system settings
 function formatSystemDate($dateString, $includeTime = false) {
     global $settings;
@@ -199,7 +228,6 @@ function formatSystemDate($dateString, $includeTime = false) {
     return date($settings['date_format'], $timestamp);
 }
 ?>
-
 <?php if ($patient): ?>
 <div class="bg-white rounded-lg shadow p-6 mb-6">
     <div class="flex items-center space-x-4">
@@ -216,7 +244,6 @@ function formatSystemDate($dateString, $includeTime = false) {
     </div>
 </div>
 <?php endif; ?>
-
 <?php if ($editing): ?>
 <!-- Medical Record Form -->
 <div class="bg-white rounded-lg shadow p-6 mb-6">
@@ -297,7 +324,7 @@ function formatSystemDate($dateString, $includeTime = false) {
 </div>
 <?php elseif ($patient_id > 0): ?>
 <!-- Medical Records List -->
-<div class="bg-white rounded-lg shadow overflow-hidden">
+<div class="bg-white rounded-lg shadow overflow-hidden mb-6">
     <div class="p-4 border-b flex justify-between items-center">
         <h3 class="font-semibold">Medical Records</h3>
         <div class="flex space-x-2">
@@ -436,6 +463,127 @@ function formatSystemDate($dateString, $includeTime = false) {
         <?php endif; ?>
     </div>
 </div>
+
+<!-- Prescriptions Section -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="p-4 border-b flex justify-between items-center">
+        <h3 class="font-semibold">Prescriptions</h3>
+        <button id="showPrescriptionForm" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            <i class="fas fa-plus"></i> Add Prescription
+        </button>
+    </div>
+
+    <!-- Prescription Form (initially hidden) -->
+    <div id="prescriptionForm" class="p-4 border-b hidden">
+        <form method="POST" action="">
+            <input type="hidden" name="patient_id" value="<?php echo $patient_id; ?>">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="prescription_date">Prescription Date</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                        id="prescription_date" name="prescription_date" type="date" value="<?php echo date('Y-m-d'); ?>" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="status">Status</label>
+                    <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                        id="status" name="status" required>
+                        <option value="active" selected>Active</option>
+                        <option value="completed">Completed</option>
+                        <option value="canceled">Canceled</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="instructions">Instructions</label>
+                    <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                        id="instructions" name="instructions" placeholder="Prescription instructions" rows="3" required></textarea>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="refills_remaining">Refills Remaining</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                        id="refills_remaining" name="refills_remaining" type="number" min="0" value="0" required>
+                </div>
+            </div>
+            <div class="mt-4 flex justify-end space-x-4">
+                <button type="button" id="hidePrescriptionForm" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Cancel
+                </button>
+                <button type="submit" name="add_prescription" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Add Prescription
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Prescriptions Table -->
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Refills</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <?php
+                // Fetch prescriptions for this patient
+                $prescriptions = $conn->query("
+                    SELECT p.*, u.first_name as doctor_first, u.last_name as doctor_last
+                    FROM prescriptions p
+                    JOIN users u ON p.doctor_id = u.user_id
+                    WHERE p.patient_id = $patient_id
+                    ORDER BY p.prescription_date DESC
+                ");
+
+                while ($prescription = $prescriptions->fetch_assoc()):
+                    $date = formatSystemDate($prescription['prescription_date']);
+                    $statusClass = '';
+                    if ($prescription['status'] == 'active') {
+                        $statusClass = 'bg-green-100 text-green-800';
+                    } elseif ($prescription['status'] == 'completed') {
+                        $statusClass = 'bg-blue-100 text-blue-800';
+                    } else {
+                        $statusClass = 'bg-red-100 text-red-800';
+                    }
+                ?>
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo $date; ?></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Dr. <?php echo htmlspecialchars($prescription['doctor_last']); ?></td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $statusClass; ?>">
+                            <?php echo ucfirst($prescription['status']); ?>
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo $prescription['refills_remaining']; ?></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="medical_records.php?delete_prescription=<?php echo $prescription['prescription_id']; ?>&patient_id=<?php echo $patient_id; ?>" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure you want to delete this prescription?');">Delete</a>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+                
+                <?php if ($prescriptions->num_rows == 0): ?>
+                <tr>
+                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                        No prescriptions found for this patient.
+                    </td>
+                </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.getElementById('showPrescriptionForm').addEventListener('click', function() {
+        document.getElementById('prescriptionForm').classList.remove('hidden');
+    });
+
+    document.getElementById('hidePrescriptionForm').addEventListener('click', function() {
+        document.getElementById('prescriptionForm').classList.add('hidden');
+    });
+</script>
 <?php else: ?>
 <!-- Patient Selection -->
 <div class="bg-white rounded-lg shadow p-6">
@@ -568,5 +716,4 @@ function formatSystemDate($dateString, $includeTime = false) {
     </div>
 </div>
 <?php endif; ?>
-
 <?php require_once 'includes/footer.php'; ?>
