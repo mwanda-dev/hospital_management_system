@@ -132,10 +132,8 @@ function updateWard($conn, $data, $user_id) {
                           $data['capacity'], $data['charge_per_day'], $data['ward_id']);
         $stmt->execute();
         
-        // If capacity changed, adjust beds
-        if ($old_ward['capacity'] != $data['capacity']) {
-            adjustWardBeds($conn, $data['ward_id'], $data['capacity']);
-        }
+
+        adjustWardBeds($conn, $data['ward_id'], $data['capacity']);
         
         // Log the action
         logAuditAction($conn, $user_id, 'UPDATE', 'wards', $data['ward_id'], 

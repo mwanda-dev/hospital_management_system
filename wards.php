@@ -279,6 +279,47 @@ if (isset($_GET['edit'])) {
 } elseif (isset($_GET['add'])) {
     $editing = true;
 }
+
+// Emergency Ward starts out with zero beds and can't be edited', this fixes it
+if (!$editing) {
+    try {
+        $wards_needing_fix = $conn->query("
+            SELECT w.ward_id, w.ward_name, w.capacity, COUNT(b.bed_id) as current_beds
+            FROM wards w
+            LEFT JOIN beds b ON w.ward_id = b.ward_id
+            GROUP BY w.ward_id, w.ward_name, w.capacity
+            HAVING current_beds < w.capacity
+        ");
+        
+        if ($wards_needing_fix->num_rows > 0) {
+            $fixed_wards = [];
+            $conn->begin_transaction();
+            
+            while ($ward_to_fix = $wards_needing_fix->fetch_assoc()) {
+                $missing_beds = $ward_to_fix['capacity'] - $ward_to_fix['current_beds'];
+                
+                // Create missing beds
+                for ($i = $ward_to_fix['current_beds'] + 1; $i <= $ward_to_fix['capacity']; $i++) {
+                    $bed_number = str_pad($i, 2, '0', STR_PAD_LEFT);
+                    $stmt = $conn->prepare("INSERT INTO beds (ward_id, bed_number, status) VALUES (?, ?, 'available')");
+                    $stmt->bind_param("is", $ward_to_fix['ward_id'], $bed_number);
+                    $stmt->execute();
+                }
+                
+                $fixed_wards[] = $ward_to_fix['ward_name'] . " (added {$missing_beds} beds)";
+            }
+            
+            $conn->commit();
+            
+            if (!empty($fixed_wards)) {
+                $_SESSION['message'] = "Auto-fixed wards with missing beds: " . implode(', ', $fixed_wards);
+            }
+        }
+    } catch (Exception $e) {
+        $conn->rollback();
+        // the page won't give an error if this fix fails
+    }
+}
 ?>
 
 <?php if ($editing): ?>
@@ -639,16 +680,31 @@ if (isset($_GET['edit'])) {
                         <?php echo $bed['status'] == 'occupied' ? format_date($bed['admission_date'], $settings['date_format']) : '-'; ?>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <?php if ($bed['status'] == 'occupied' && $bed['admission_id']): ?>
-                            <form method="POST" action="" class="inline" onsubmit="return confirm('Are you sure you want to discharge this patient?');">
-                                <input type="hidden" name="admission_id" value="<?php echo $bed['admission_id']; ?>">
-                                <button type="submit" name="discharge_patient" class="text-red-600 hover:text-red-900">
-                                    <i class="fas fa-sign-out-alt"></i> Discharge
+                        <div class="flex space-x-2">
+                            <?php if ($bed['status'] == 'occupied' && $bed['admission_id']): ?>
+                                <form method="POST" action="" class="inline" onsubmit="return confirm('Are you sure you want to discharge this patient?');">
+                                    <input type="hidden" name="admission_id" value="<?php echo $bed['admission_id']; ?>">
+                                    <button type="submit" name="discharge_patient" class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-sign-out-alt"></i> Discharge
+                                    </button>
+                                </form>
+                            <?php else: ?>
+                                <button onclick="editBed(<?php echo $bed['bed_id']; ?>, '<?php echo htmlspecialchars($bed['bed_number']); ?>', <?php echo $bed['ward_id']; ?>, '<?php echo $bed['status']; ?>')" class="text-blue-600 hover:text-blue-900 mr-2">
+                                    <i class="fas fa-edit"></i> Edit
                                 </button>
-                            </form>
-                        <?php else: ?>
-                            <span class="text-gray-400">-</span>
-                        <?php endif; ?>
+                                <?php if ($bed['status'] != 'maintenance'): ?>
+                                    <button onclick="setMaintenance(<?php echo $bed['bed_id']; ?>, '<?php echo htmlspecialchars($bed['ward_name']); ?> - Bed <?php echo htmlspecialchars($bed['bed_number']); ?>')" class="text-orange-600 hover:text-orange-900 mr-2">
+                                        <i class="fas fa-wrench"></i> Maintenance
+                                    </button>
+                                <?php endif; ?>
+                                <form method="POST" action="" class="inline" onsubmit="return confirm('Are you sure you want to delete this bed?');">
+                                    <input type="hidden" name="bed_id" value="<?php echo $bed['bed_id']; ?>">
+                                    <button type="submit" name="delete_bed" class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
                     </td>
                 </tr>
                 <?php endwhile; ?>
@@ -715,7 +771,110 @@ document.getElementById('patientLocationSearch')?.addEventListener('input', func
         });
     }, 300);
 });
+
+// Bed Management JavaScript Functions
+function openAddBedModal() {
+    document.getElementById('bedModal').classList.remove('hidden');
+    document.getElementById('bedModalTitle').textContent = 'Add New Bed';
+    document.getElementById('bedForm').reset();
+    document.getElementById('bedId').value = '';
+    document.getElementById('bedSubmitBtn').name = 'add_bed';
+    document.getElementById('bedSubmitBtn').textContent = 'Add Bed';
+}
+
+function editBed(bedId, bedNumber, wardId, status) {
+    document.getElementById('bedModal').classList.remove('hidden');
+    document.getElementById('bedModalTitle').textContent = 'Edit Bed';
+    document.getElementById('bedId').value = bedId;
+    document.getElementById('bedNumber').value = bedNumber;
+    document.getElementById('bedWardId').value = wardId;
+    document.getElementById('bedStatus').value = status;
+    document.getElementById('bedSubmitBtn').name = 'update_bed';
+    document.getElementById('bedSubmitBtn').textContent = 'Update Bed';
+}
+
+function closeBedModal() {
+    document.getElementById('bedModal').classList.add('hidden');
+}
+
+function setMaintenance(bedId, bedName) {
+    document.getElementById('maintenanceModal').classList.remove('hidden');
+    document.getElementById('maintenanceBedId').value = bedId;
+    document.getElementById('maintenanceBedName').textContent = bedName;
+}
+
+function closeMaintenanceModal() {
+    document.getElementById('maintenanceModal').classList.add('hidden');
+}
 </script>
+
+<!-- Bed Add/Edit Modal -->
+<div id="bedModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-4" id="bedModalTitle">Add New Bed</h3>
+            <form method="POST" action="" id="bedForm">
+                <input type="hidden" id="bedId" name="bed_id">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="bedWardId">Ward</label>
+                    <select id="bedWardId" name="ward_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                        <option value="">Select Ward</option>
+                        <?php
+                        $all_wards = $conn->query("SELECT ward_id, ward_name FROM wards ORDER BY ward_name");
+                        while ($ward = $all_wards->fetch_assoc()): ?>
+                            <option value="<?php echo $ward['ward_id']; ?>"><?php echo htmlspecialchars($ward['ward_name']); ?></option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="bedNumber">Bed Number</label>
+                    <input type="text" id="bedNumber" name="bed_number" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="bedStatus">Status</label>
+                    <select id="bedStatus" name="status" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                        <option value="available">Available</option>
+                        <option value="maintenance">Maintenance</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" onclick="closeBedModal()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Cancel
+                    </button>
+                    <button type="submit" id="bedSubmitBtn" name="add_bed" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Add Bed
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Maintenance Modal -->
+<div id="maintenanceModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Set Bed to Maintenance</h3>
+            <p class="mb-4">Set <span id="maintenanceBedName" class="font-semibold"></span> to maintenance status?</p>
+            <form method="POST" action="">
+                <input type="hidden" id="maintenanceBedId" name="bed_id">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="maintenanceReason">Reason for Maintenance</label>
+                    <textarea id="maintenanceReason" name="maintenance_reason" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Enter maintenance reason..."></textarea>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" onclick="closeMaintenanceModal()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Cancel
+                    </button>
+                    <button type="submit" name="set_maintenance" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Set Maintenance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <?php endif; ?>
 
 <?php require_once 'includes/footer.php'; ?>
