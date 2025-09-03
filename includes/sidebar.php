@@ -49,8 +49,8 @@
                 </li>
                 <li>
                     <a href="inventory.php" class="flex items-center space-x-3 p-2 rounded-lg <?php echo basename($_SERVER['PHP_SELF']) == 'inventory.php' ? 'active-nav-item' : 'hover:bg-blue-50'; ?>">
-                        <i class="fas fa-pills w-5 text-center"></i>
-                        <span>Medication</span>
+                        <i class="fas fa-boxes w-5 text-center"></i>
+                        <span>Inventory</span>
                     </a>
                 </li>
                 <li>
