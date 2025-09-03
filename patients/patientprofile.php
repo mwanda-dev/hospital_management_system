@@ -22,6 +22,22 @@ if ($result->num_rows === 0) {
 
 $patient = $result->fetch_assoc();
 
+// Get real visit count (completed appointments)
+$visit_sql = "SELECT COUNT(*) AS visit_count FROM appointments WHERE patient_id = ? AND status = 'completed'";
+$visit_stmt = $conn->prepare($visit_sql);
+$visit_stmt->bind_param("i", $patient_id);
+$visit_stmt->execute();
+$visit_result = $visit_stmt->get_result();
+$visit_count = $visit_result->fetch_assoc()['visit_count'];
+
+// Get real prescription count
+$presc_sql = "SELECT COUNT(*) AS prescription_count FROM prescriptions WHERE patient_id = ?";
+$presc_stmt = $conn->prepare($presc_sql);
+$presc_stmt->bind_param("i", $patient_id);
+$presc_stmt->execute();
+$presc_result = $presc_stmt->get_result();
+$prescription_count = $presc_result->fetch_assoc()['prescription_count'];
+
 // Handle form submission for updating profile
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
     $first_name = trim($_POST['first_name']);
@@ -635,16 +651,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
                         <p class="profile-role">Patient since <?php echo date('Y', strtotime($patient['registration_date'])); ?></p>
                     </div>
                     
-                    <div class="profile-stats">
-                        <div class="stat">
-                            <div class="stat-value"><?php echo rand(5, 20); ?></div>
-                            <div class="stat-label">Visits</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value"><?php echo rand(3, 10); ?></div>
-                            <div class="stat-label">Prescriptions</div>
-                        </div>
-                    </div>
+                   <div class="profile-stats">
+    <div class="stat">
+        <div class="stat-value"><?php echo $visit_count; ?></div>
+        <div class="stat-label">Visits</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value"><?php echo $prescription_count; ?></div>
+        <div class="stat-label">Prescriptions</div>
+    </div>
+</div>
                 </div>
                 
                 <?php if (!empty($patient['emergency_contact_name'])): ?>
@@ -843,17 +859,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
             // Edit button functionality for personal info
             const editPersonalBtn = document.getElementById('edit-personal');
             const savePersonalBtn = document.getElementById('save-personal');
-            
+            const personalForm = document.querySelector('#personal form');
             if (editPersonalBtn) {
                 editPersonalBtn.addEventListener('click', function() {
-                    const formControls = document.querySelectorAll('#personal input:not([readonly]), #personal textarea:not([readonly])');
-                    const isReadOnly = formControls[0].hasAttribute('readonly');
-                    
-                    if (isReadOnly) {
-                        formControls.forEach(control => control.removeAttribute('readonly'));
-                        editPersonalBtn.style.display = 'none';
-                        savePersonalBtn.style.display = 'inline-block';
-                    }
+                    // Only allow editing for fields with a name attribute (exclude date_of_birth, gender)
+                    personalForm.querySelectorAll('input[name], textarea[name]').forEach(control => {
+                        control.removeAttribute('readonly');
+                    });
+                    editPersonalBtn.style.display = 'none';
+                    savePersonalBtn.style.display = 'inline-block';
                 });
             }
         });
