@@ -245,7 +245,60 @@ if (isset($_GET['edit'])) {
     </form>
 </div>
 <?php else: ?>
-<!-- Inventory List -->
+<!-- Inventory Summary and List -->
+<?php if (!$editing): ?>
+<?php
+// Fetch inventory summary by category
+$summary = $conn->query("
+    SELECT item_type, 
+           SUM(quantity_in_stock) AS total_quantity, 
+           SUM(quantity_in_stock * cost_per_unit) AS total_value
+    FROM inventory
+    GROUP BY item_type
+");
+
+$categories = [];
+while ($row = $summary->fetch_assoc()) {
+    $categories[$row['item_type']] = $row;
+}
+// Ensure all categories exist in the array (even if empty)
+foreach (['medication', 'supply', 'equipment'] as $type) {
+    if (!isset($categories[$type])) {
+        $categories[$type] = ['total_quantity' => 0, 'total_value' => 0];
+    }
+}
+$icons = [
+    'medication' => 'fas fa-pills',
+    'supply' => 'fas fa-boxes',
+    'equipment' => 'fas fa-stethoscope'
+];
+?>
+<!-- Inventory Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <?php foreach (['medication', 'supply', 'equipment'] as $type): 
+        $quantity = $categories[$type]['total_quantity'];
+        $value = format_currency($categories[$type]['total_value'], $settings['currency_symbol']);
+    ?>
+        <div class="bg-white shadow-lg rounded-xl p-6 flex flex-col justify-between hover:shadow-2xl transition duration-300">
+            <div class="flex items-center space-x-4">
+                <div class="text-3xl text-blue-500">
+                    <i class="<?php echo $icons[$type]; ?>"></i>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-xl capitalize"><?php echo $type; ?></h4>
+                    <p class="text-gray-500 text-sm">Inventory Overview</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <p class="text-gray-600">Available Items:</p>
+                <p class="text-2xl font-bold text-gray-800"><?php echo $quantity; ?></p>
+                <p class="text-gray-600 mt-2">Total Value:</p>
+                <p class="text-xl font-semibold text-gray-800"><?php echo $value; ?></p>
+            </div>
+        </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
 <div class="bg-white rounded-lg shadow overflow-hidden">
     <div class="p-4 border-b flex justify-between items-center">
         <h3 class="font-semibold">Inventory Items</h3>
