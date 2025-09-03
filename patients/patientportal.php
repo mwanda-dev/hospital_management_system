@@ -109,12 +109,12 @@ $records_stmt->bind_param("i", $patient_id);
 $records_stmt->execute();
 $records_result = $records_stmt->get_result();
 
-// Fetch current prescriptions
+// Fetch current prescriptions - UPDATED QUERY
 $prescriptions_stmt = $conn->prepare("
-    SELECT p.instructions, p.refills_remaining,
-           mr.prescribed_medication
+    SELECT p.prescription_id, p.prescription_date, p.instructions, p.refills_remaining, p.status,
+           d.first_name, d.last_name
     FROM prescriptions p
-    INNER JOIN medical_records mr ON p.record_id = mr.record_id
+    INNER JOIN users d ON p.doctor_id = d.user_id
     WHERE p.patient_id = ? 
     AND p.status = 'active'
     ORDER BY p.prescription_date DESC
@@ -693,35 +693,17 @@ $prescriptions_result = $prescriptions_stmt->get_result();
                         <a href="patientprescriptions.php">View All</a>
                     </div>
                     <?php if ($prescriptions_result->num_rows > 0): ?>
-                        <?php while($prescription = $prescriptions_result->fetch_assoc()): 
-                            // Extract medication name from prescribed_medication
-                            $medication_data = $prescription['prescribed_medication'];
-                            $medication_name = "Medication";
-                            
-                            if (!empty($medication_data)) {
-                                // Try to parse JSON if it's stored as JSON
-                                $medication_json = json_decode($medication_data, true);
-                                if (json_last_error() === JSON_ERROR_NONE && isset($medication_json[0]['name'])) {
-                                    $medication_name = $medication_json[0]['name'];
-                                } else {
-                                    // If not JSON, try to extract the first medication name
-                                    $lines = explode("\n", $medication_data);
-                                    foreach ($lines as $line) {
-                                        if (preg_match('/([A-Za-z\s]+)\s*\d+mg/i', $line, $matches)) {
-                                            $medication_name = trim($matches[1]);
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        ?>
+                        <?php while($prescription = $prescriptions_result->fetch_assoc()): ?>
                             <div class="medication-item">
                                 <div class="med-icon">
                                     <i class="fas fa-pills"></i>
                                 </div>
                                 <div class="med-info">
-                                    <h4><?php echo htmlspecialchars($medication_name); ?></h4>
-                                    <p><?php echo htmlspecialchars($prescription['instructions'] ?? 'Take as directed'); ?> | Refills: <?php echo $prescription['refills_remaining']; ?> remaining</p>
+                                    <h4>Prescription #<?php echo $prescription['prescription_id']; ?></h4>
+                                    <p>Prescribed by Dr. <?php echo htmlspecialchars($prescription['first_name'] . ' ' . $prescription['last_name']); ?></p>
+                                    <p><?php echo htmlspecialchars($prescription['instructions'] ?? 'Take as directed'); ?></p>
+                                    <p>Refills: <?php echo $prescription['refills_remaining']; ?> remaining</p>
+                                    <p>Date: <?php echo date('M j, Y', strtotime($prescription['prescription_date'])); ?></p>
                                 </div>
                             </div>
                         <?php endwhile; ?>
