@@ -806,6 +806,14 @@ function setMaintenance(bedId, bedName) {
 function closeMaintenanceModal() {
     document.getElementById('maintenanceModal').classList.add('hidden');
 }
+
+// Add character counter for maintenance reason
+document.getElementById('maintenanceReason')?.addEventListener('input', function() {
+    const maxLength = parseInt(this.getAttribute('maxlength'));
+    const currentLength = this.value.length;
+    const remaining = maxLength - currentLength;
+    document.getElementById('charCount').textContent = remaining;
+});
 </script>
 
 <!-- Bed Add/Edit Modal -->
@@ -851,22 +859,23 @@ function closeMaintenanceModal() {
 </div>
 
 <!-- Maintenance Modal -->
-<div id="maintenanceModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3">
+<div id="maintenanceModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4" style="z-index: 9999;">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-96 overflow-y-auto" style="position: relative;">
+        <div class="p-6">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Set Bed to Maintenance</h3>
             <p class="mb-4">Set <span id="maintenanceBedName" class="font-semibold"></span> to maintenance status?</p>
-            <form method="POST" action="">
+            <form method="POST" action="" id="maintenanceForm">
                 <input type="hidden" id="maintenanceBedId" name="bed_id">
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="maintenanceReason">Reason for Maintenance</label>
-                    <textarea id="maintenanceReason" name="maintenance_reason" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Enter maintenance reason..."></textarea>
+                    <textarea id="maintenanceReason" name="maintenance_reason" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline resize-none" placeholder="Enter maintenance reason..." maxlength="500"></textarea>
+                    <div class="text-xs text-gray-500 mt-1">Characters remaining: <span id="charCount">500</span></div>
                 </div>
-                <div class="flex justify-end space-x-4">
-                    <button type="button" onclick="closeMaintenanceModal()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button type="button" onclick="closeMaintenanceModal()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline border-2 border-gray-500" style="display: inline-block !important; visibility: visible !important; background-color: #6b7280 !important;">
                         Cancel
                     </button>
-                    <button type="submit" name="set_maintenance" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    <button type="submit" name="set_maintenance" id="maintenanceSubmitBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline border-2 border-red-500" style="display: inline-block !important; visibility: visible !important; background-color: #ef4444 !important; color: #ffffff !important;">
                         Set Maintenance
                     </button>
                 </div>
