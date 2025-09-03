@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 19, 2025 at 02:55 PM
+-- Generation Time: Sep 02, 2025 at 12:56 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -54,6 +54,7 @@ CREATE TABLE `appointments` (
   `end_time` time NOT NULL,
   `purpose` varchar(255) NOT NULL,
   `status` enum('scheduled','completed','canceled','no_show') DEFAULT 'scheduled',
+  `cancel_reason` varchar(255) DEFAULT NULL,
   `notes` text DEFAULT NULL,
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -64,9 +65,12 @@ CREATE TABLE `appointments` (
 -- Dumping data for table `appointments`
 --
 
-INSERT INTO `appointments` (`appointment_id`, `patient_id`, `doctor_id`, `appointment_date`, `start_time`, `end_time`, `purpose`, `status`, `notes`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 10, 8, '2025-07-19', '09:00:00', '09:30:00', 'coz he wants', 'scheduled', 'wants to see wassup', 1, '2025-07-19 12:22:50', '2025-07-19 12:22:50'),
-(2, 7, 12, '2025-07-19', '09:00:00', '09:30:00', 'fibroid ', 'scheduled', 'need root removal', 1, '2025-07-19 12:24:43', '2025-07-19 12:24:43');
+INSERT INTO `appointments` (`appointment_id`, `patient_id`, `doctor_id`, `appointment_date`, `start_time`, `end_time`, `purpose`, `status`, `cancel_reason`, `notes`, `created_by`, `created_at`, `updated_at`) VALUES
+(2, 7, 12, '2025-09-01', '21:00:00', '21:30:00', 'fibroid ', 'completed', NULL, 'need root removal', 1, '2025-07-19 12:24:43', '2025-09-01 09:45:17'),
+(3, 2, 9, '2025-09-01', '09:00:00', '09:30:00', 'alpha testing', 'scheduled', NULL, 'testing', 9, '2025-07-19 13:13:35', '2025-09-01 14:34:50'),
+(5, 3, 9, '2025-09-01', '21:00:00', '21:30:00', 'coz she wants', 'scheduled', NULL, 'curious', 1, '2025-07-19 18:52:30', '2025-09-01 09:45:36'),
+(6, 10, 8, '2025-09-01', '21:00:00', '21:30:00', 'df', 'scheduled', NULL, 's', 1, '2025-07-21 16:32:15', '2025-09-01 09:45:27'),
+(7, 2, 15, '2025-09-02', '23:59:00', '12:00:00', 'coz she wants', 'canceled', 'changed my mind\r\n', 'back problem', 2, '2025-09-01 21:00:23', '2025-09-01 22:55:28');
 
 -- --------------------------------------------------------
 
@@ -121,6 +125,16 @@ CREATE TABLE `billing` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `billing`
+--
+
+INSERT INTO `billing` (`invoice_id`, `patient_id`, `invoice_date`, `due_date`, `total_amount`, `paid_amount`, `status`, `payment_method`, `payment_details`, `notes`, `created_by`, `created_at`, `updated_at`) VALUES
+(3, 4, '2025-08-31', '2025-10-01', 67.00, 67.00, 'paid', 'cash', 'uytfu656', 'ayy warap', 1, '2025-08-31 10:57:51', '2025-08-31 10:58:07'),
+(4, 10, '2025-08-31', '2025-09-07', 169.00, 169.00, 'paid', 'cash', 'ytyt', 'g', 1, '2025-08-31 11:01:23', '2025-08-31 11:01:42'),
+(5, 7, '2025-09-01', '2025-09-09', 468.00, 468.00, 'paid', 'cash', 'jk', 'jjk', 1, '2025-09-01 09:51:27', '2025-09-01 09:51:36'),
+(6, 2, '2025-09-01', '2025-09-01', 98.00, 0.00, 'pending', 'cash', NULL, 'iuiu', 1, '2025-09-01 14:30:53', '2025-09-01 14:30:53');
+
 -- --------------------------------------------------------
 
 --
@@ -135,6 +149,17 @@ CREATE TABLE `billing_items` (
   `unit_price` decimal(10,2) NOT NULL,
   `amount` decimal(10,2) GENERATED ALWAYS AS (`quantity` * `unit_price`) STORED
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `billing_items`
+--
+
+INSERT INTO `billing_items` (`item_id`, `invoice_id`, `description`, `quantity`, `unit_price`) VALUES
+(3, 3, 'ayy', 1, 67.00),
+(4, 4, 'hj', 1, 80.00),
+(5, 4, 'hj', 1, 89.00),
+(6, 5, 'jk', 6, 78.00),
+(7, 6, 'kj', 1, 98.00);
 
 -- --------------------------------------------------------
 
@@ -157,6 +182,13 @@ CREATE TABLE `inventory` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `inventory`
+--
+
+INSERT INTO `inventory` (`item_id`, `item_name`, `item_type`, `description`, `quantity_in_stock`, `unit_of_measure`, `reorder_level`, `cost_per_unit`, `selling_price`, `supplier`, `last_restocked`, `updated_at`) VALUES
+(1, 'amoxilin', 'medication', 'am', 1, 'boxes', 10, 18.00, 25.00, '0', '2025-07-19', '2025-07-24 11:56:03');
+
 -- --------------------------------------------------------
 
 --
@@ -178,6 +210,15 @@ CREATE TABLE `medical_records` (
   `follow_up_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `medical_records`
+--
+
+INSERT INTO `medical_records` (`record_id`, `patient_id`, `doctor_id`, `record_date`, `record_type`, `title`, `description`, `diagnosis_code`, `treatment_plan`, `prescribed_medication`, `lab_results`, `follow_up_date`) VALUES
+(6, 10, 1, '2025-07-19 18:49:39', 'lab_result', 'blood-type ', 'blood-type test', NULL, NULL, NULL, 'O+', NULL),
+(7, 10, 1, '2025-07-19 18:53:53', 'diagnosis', 'Malaria', 'fever and bitter taste', 'ICD-11', 'give medicine', 'phancida', 'positive', '2025-08-08'),
+(10, 2, 1, '2025-09-01 14:29:32', 'diagnosis', 'kl', 'kl', 'ICDJJ', 'lk', 'amoxilin', 'k', '2025-09-01');
+
 -- --------------------------------------------------------
 
 --
@@ -191,7 +232,6 @@ CREATE TABLE `patients` (
   `date_of_birth` date NOT NULL,
   `gender` enum('male','female') NOT NULL,
   `blood_type` enum('Unknown','A+','A-','B+','B-','AB+','AB-','O+','O-') DEFAULT NULL,
-  `gender` enum('male','female') NOT NULL,
   `phone` varchar(20) NOT NULL,
   `email` varchar(100) DEFAULT NULL,
   `address` text DEFAULT NULL,
@@ -208,8 +248,7 @@ CREATE TABLE `patients` (
 --
 
 INSERT INTO `patients` (`patient_id`, `first_name`, `last_name`, `date_of_birth`, `gender`, `blood_type`, `phone`, `email`, `address`, `emergency_contact_name`, `emergency_contact_phone`, `insurance_provider`, `insurance_policy_number`, `registration_date`, `updated_at`) VALUES
-(1, 'Alice', 'Mwansa', '1990-05-12', 'female', 'O+', '+260771111111', NULL, NULL, NULL, NULL, NULL, NULL, '2025-07-19 10:19:30', '2025-07-19 10:19:30'),
-(2, 'Brian', 'Zimba', '1985-03-25', 'male', 'A+', '+260772222222', NULL, NULL, NULL, NULL, NULL, NULL, '2025-07-19 10:19:30', '2025-07-19 10:19:30'),
+(2, 'Brian', 'Zimba', '1985-03-25', 'male', 'Unknown', '+260772222222', '', '', '', '', '', '', '2025-07-19 10:19:30', '2025-08-08 09:37:17'),
 (3, 'Cathy', 'Tembo', '1992-07-01', 'female', 'B+', '+260773333333', NULL, NULL, NULL, NULL, NULL, NULL, '2025-07-19 10:19:30', '2025-07-19 10:19:30'),
 (4, 'David', 'Lungu', '1978-11-30', 'male', 'AB+', '+260774444444', NULL, NULL, NULL, NULL, NULL, NULL, '2025-07-19 10:19:30', '2025-07-19 10:19:30'),
 (5, 'Emma', 'Phiri', '2000-01-15', 'female', 'O-', '+260775555555', NULL, NULL, NULL, NULL, NULL, NULL, '2025-07-19 10:19:30', '2025-07-19 10:19:30'),
@@ -217,7 +256,8 @@ INSERT INTO `patients` (`patient_id`, `first_name`, `last_name`, `date_of_birth`
 (7, 'Grace', 'Ngoma', '1995-04-20', 'female', 'B-', '+260777777777', NULL, NULL, NULL, NULL, NULL, NULL, '2025-07-19 10:19:30', '2025-07-19 10:19:30'),
 (8, 'Henry', 'Mumba', '1983-02-02', 'male', 'O+', '+260778888888', NULL, NULL, NULL, NULL, NULL, NULL, '2025-07-19 10:19:30', '2025-07-19 10:19:30'),
 (9, 'Irene', 'Chileshe', '1998-08-08', 'female', 'AB-', '+260779999999', NULL, NULL, NULL, NULL, NULL, NULL, '2025-07-19 10:19:30', '2025-07-19 10:19:30'),
-(10, 'James', 'Banda', '1975-12-12', 'male', 'A+', '+260770000000', NULL, NULL, NULL, NULL, NULL, NULL, '2025-07-19 10:19:30', '2025-07-19 10:19:30');
+(10, 'James', 'Banda', '1975-12-12', 'male', 'A+', '+260770000000', NULL, NULL, NULL, NULL, NULL, NULL, '2025-07-19 10:19:30', '2025-07-19 10:19:30'),
+(13, 'James', 'King', '2025-08-07', 'male', 'Unknown', '097877777787', 'denim@inventory.com', 'y6y', 'jane', '+260963503110', 'Nhima', '99999', '2025-08-07 12:53:59', '2025-08-28 20:34:17');
 
 -- --------------------------------------------------------
 
@@ -267,6 +307,22 @@ CREATE TABLE `system_settings` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `system_settings`
+--
+
+INSERT INTO `system_settings` (`setting_id`, `setting_key`, `setting_value`, `description`, `updated_at`) VALUES
+(1, 'hospital_name', 'MediCare Hospital', NULL, '2025-07-21 09:10:24'),
+(2, 'hospital_phone', '+260 211 123456', NULL, '2025-07-21 09:10:24'),
+(3, 'hospital_address', '123 Medical Drive, Lusaka, Zambia', NULL, '2025-07-21 09:10:24'),
+(4, 'hospital_email', 'info@medicare.com', NULL, '2025-07-21 09:10:24'),
+(5, 'currency_symbol', 'K', NULL, '2025-07-25 17:35:26'),
+(6, 'date_format', 'd/m/Y', NULL, '2025-07-25 16:16:44'),
+(7, 'time_format', 'H:i', NULL, '2025-07-21 09:10:24'),
+(8, 'records_per_page', '10', NULL, '2025-07-21 09:10:24'),
+(9, 'enable_sms_notifications', '1', NULL, '2025-07-21 09:10:24'),
+(10, 'enable_email_notifications', '1', NULL, '2025-07-21 09:10:24');
+
 -- --------------------------------------------------------
 
 --
@@ -295,14 +351,14 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `username`, `password_hash`, `email`, `first_name`, `last_name`, `role`, `specialization`, `phone`, `address`, `hire_date`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin@hospital.com', 'System', 'Administrator', 'admin', NULL, '+260123456789', NULL, '2025-07-18', 'active', '2025-07-18 12:09:38', '2025-07-18 12:09:38'),
+(1, 'admin', '$2y$10$nIjaPKmg6R9kTEZD8datzO8IGjpfIGhUSr2zON0O1RjN2vpYuaPVq', 'admin@hospital.com', 'System', 'Administrator', 'admin', '', '+260123456789', 'Alpha State', '2025-07-18', 'active', '2025-07-18 12:09:38', '2025-09-01 09:36:52'),
 (2, 'dr.smith', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'dr.smith@hospital.com', 'John', 'Smith', 'doctor', 'Cardiology', '+260987654321', NULL, '2023-07-18', 'active', '2025-07-18 12:09:38', '2025-07-18 12:09:38'),
 (3, 'lab.tech1', 'password', 'lab1@hospital.com', 'Lydia', 'Mutale', 'lab_technician', NULL, '+260711000001', NULL, '2024-01-10', 'active', '2025-07-19 10:19:47', '2025-07-19 10:19:47'),
 (4, 'lab.tech2', 'password', 'lab2@hospital.com', 'Kelvin', 'Zimba', 'lab_technician', NULL, '+260711000002', NULL, '2024-01-11', 'active', '2025-07-19 10:19:47', '2025-07-19 10:19:47'),
 (5, 'lab.tech3', 'password', 'lab3@hospital.com', 'Memory', 'Phiri', 'lab_technician', NULL, '+260711000003', NULL, '2024-01-12', 'active', '2025-07-19 10:19:47', '2025-07-19 10:19:47'),
 (6, 'lab.tech4', 'password', 'lab4@hospital.com', 'Noah', 'Kunda', 'lab_technician', NULL, '+260711000004', NULL, '2024-01-13', 'active', '2025-07-19 10:19:47', '2025-07-19 10:19:47'),
 (7, 'lab.tech5', 'password', 'lab5@hospital.com', 'Olivia', 'Bwalya', 'lab_technician', NULL, '+260711000005', NULL, '2024-01-14', 'active', '2025-07-19 10:19:47', '2025-07-19 10:19:47'),
-(8, 'dr.chileshe', 'password', 'drchileshe@hospital.com', 'Peter', 'Chileshe', 'doctor', 'Pediatrics', '+260721000001', NULL, '2023-08-01', 'active', '2025-07-19 10:20:04', '2025-07-19 10:20:04'),
+(8, 'dr.chileshe', 'password', 'drchileshe@hospital.com', 'Peter', 'Chileshe', 'doctor', 'Pediatrics', '+260721000001', NULL, '2023-08-01', 'inactive', '2025-07-19 10:20:04', '2025-07-21 16:31:53'),
 (9, 'dr.kapeya', 'password', 'drkapeya@hospital.com', 'Martha', 'Kapeya', 'doctor', 'Neurology', '+260721000002', NULL, '2023-08-02', 'active', '2025-07-19 10:20:04', '2025-07-19 10:20:04'),
 (10, 'dr.tembo', 'password', 'drtembo@hospital.com', 'Alex', 'Tembo', 'doctor', 'Orthopedics', '+260721000003', NULL, '2023-08-03', 'active', '2025-07-19 10:20:04', '2025-07-19 10:20:04'),
 (11, 'dr.sampa', 'password', 'drsampa@hospital.com', 'Lucy', 'Sampa', 'doctor', 'Dermatology', '+260721000004', NULL, '2023-08-04', 'active', '2025-07-19 10:20:04', '2025-07-19 10:20:04'),
@@ -331,7 +387,8 @@ CREATE TABLE `wards` (
 --
 
 INSERT INTO `wards` (`ward_id`, `ward_name`, `ward_type`, `capacity`, `current_occupancy`, `charge_per_day`) VALUES
-(1, 'Emergency Ward', 'general', 10, 0, 10.00);
+(1, 'Emergency Ward', 'general', 10, 0, 10.00),
+(2, 'Surgical Ward', 'surgical', 10, 0, 3.00);
 
 --
 -- Indexes for dumped tables
@@ -461,7 +518,7 @@ ALTER TABLE `admissions`
 -- AUTO_INCREMENT for table `appointments`
 --
 ALTER TABLE `appointments`
-  MODIFY `appointment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `appointment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `audit_log`
@@ -479,31 +536,31 @@ ALTER TABLE `beds`
 -- AUTO_INCREMENT for table `billing`
 --
 ALTER TABLE `billing`
-  MODIFY `invoice_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `invoice_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `billing_items`
 --
 ALTER TABLE `billing_items`
-  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `inventory`
 --
 ALTER TABLE `inventory`
-  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `medical_records`
 --
 ALTER TABLE `medical_records`
-  MODIFY `record_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `record_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `patients`
 --
 ALTER TABLE `patients`
-  MODIFY `patient_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `patient_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `prescriptions`
@@ -521,19 +578,19 @@ ALTER TABLE `prescription_items`
 -- AUTO_INCREMENT for table `system_settings`
 --
 ALTER TABLE `system_settings`
-  MODIFY `setting_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `setting_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=121;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `wards`
 --
 ALTER TABLE `wards`
-  MODIFY `ward_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `ward_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Constraints for dumped tables
@@ -606,3 +663,5 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+

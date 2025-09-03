@@ -212,7 +212,7 @@ if ($viewing) {
 <div class="bg-white rounded-lg shadow p-6 mb-6">
     <h3 class="font-semibold text-lg mb-4">Create New Invoice</h3>
     
-    <form method="POST" action="">
+    <form method="POST" action="" id="invoice-form">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="patient_id">Patient</label>
@@ -275,6 +275,9 @@ if ($viewing) {
                     <div class="col-span-3 md:col-span-2">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Amount</label>
                     </div>
+                    <div class="col-span-1">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Action</label>
+                    </div>
                 </div>
                 
                 <!-- Item template (hidden) -->
@@ -290,7 +293,9 @@ if ($viewing) {
                     </div>
                     <div class="col-span-2 md:col-span-2 flex items-center">
                         <span class="item-amount">0.00</span>
-                        <button type="button" class="ml-2 text-red-500 remove-item">
+                    </div>
+                    <div class="col-span-1 flex items-center">
+                        <button type="button" class="text-red-500 hover:text-red-700 remove-item">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -309,7 +314,9 @@ if ($viewing) {
                     </div>
                     <div class="col-span-2 md:col-span-2 flex items-center">
                         <span class="item-amount">0.00</span>
-                        <button type="button" class="ml-2 text-red-500 remove-item">
+                    </div>
+                    <div class="col-span-1 flex items-center">
+                        <button type="button" class="text-red-500 hover:text-red-700 remove-item">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -341,68 +348,119 @@ if ($viewing) {
 </div>
 
 <script>
-    $(document).ready(function() {
+// Only run this script on the add invoice page
+if (window.location.href.indexOf('add') > -1) {
+    document.addEventListener('DOMContentLoaded', function() {
+        const itemsContainer = document.getElementById('invoice-items');
+        const addItemButton = document.getElementById('add-item');
+        const subtotalElement = document.getElementById('subtotal');
+        const totalElement = document.getElementById('total');
+        const totalAmountInput = document.getElementById('total_amount');
         let itemCount = 1;
         
-        // Add new item
-        $('#add-item').click(function() {
+        // Add the first item row when page loads
+        calculateItemAmount(document.querySelector('.item-row'));
+        
+        // Add item row when button is clicked
+        addItemButton.addEventListener('click', addItemRow);
+        
+        function addItemRow() {
             itemCount++;
-            const newItem = $('.item-template').clone();
-            newItem.removeClass('item-template hidden').addClass('item-row');
+            const template = document.querySelector('.item-template');
+            const newItem = template.cloneNode(true);
+            
+            newItem.classList.remove('item-template', 'hidden');
+            newItem.classList.add('item-row');
             
             // Update names and IDs
-            newItem.find('[name]').each(function() {
-                const name = $(this).attr('name').replace('[0]', '[' + itemCount + ']');
-                $(this).attr('name', name);
+            const inputs = newItem.querySelectorAll('[name]');
+            inputs.forEach(input => {
+                const name = input.getAttribute('name').replace('[0]', '[' + itemCount + ']');
+                input.setAttribute('name', name);
             });
             
-            $('#invoice-items').append(newItem);
-            initItemEvents(newItem);
-        });
-        
-        // Remove item
-        $(document).on('click', '.remove-item', function() {
-            if ($('.item-row').length > 1) {
-                $(this).closest('.item-row').remove();
-                calculateTotal();
-            }
-        });
-        
-        // Calculate amount when quantity or price changes
-        $(document).on('input', '.item-quantity, .item-unit-price', function() {
-            const row = $(this).closest('.item-row');
-            const quantity = parseFloat(row.find('.item-quantity').val()) || 0;
-            const unitPrice = parseFloat(row.find('.item-unit-price').val()) || 0;
-            const amount = (quantity * unitPrice).toFixed(2);
-            row.find('.item-amount').text(amount);
-            calculateTotal();
-        });
-        
-        // Initialize events for existing items
-        $('.item-row').each(function() {
-            initItemEvents($(this));
-        });
-        
-        function initItemEvents(row) {
-            const quantity = parseFloat(row.find('.item-quantity').val()) || 0;
-            const unitPrice = parseFloat(row.find('.item-unit-price').val()) || 0;
-            const amount = (quantity * unitPrice).toFixed(2);
-            row.find('.item-amount').text(amount);
+            // Clear values for the new row
+            newItem.querySelector('.item-description').value = '';
+            newItem.querySelector('.item-quantity').value = '1';
+            newItem.querySelector('.item-unit-price').value = '';
+            newItem.querySelector('.item-amount').textContent = '0.00';
+            
+            itemsContainer.appendChild(newItem);
+            
+            // Add event listeners to the new inputs
+            addInputListeners(newItem);
+            
+            // Add event listener to remove button
+            newItem.querySelector('.remove-item').addEventListener('click', function() {
+                if (document.querySelectorAll('.item-row').length > 1) {
+                    newItem.remove();
+                    calculateTotal();
+                }
+            });
         }
         
+        // Add event listeners to input fields
+        function addInputListeners(row) {
+            const quantityInput = row.querySelector('.item-quantity');
+            const priceInput = row.querySelector('.item-unit-price');
+            
+            quantityInput.addEventListener('input', function() {
+                calculateItemAmount(row);
+                calculateTotal();
+            });
+            
+            priceInput.addEventListener('input', function() {
+                calculateItemAmount(row);
+                calculateTotal();
+            });
+        }
+        
+        // Calculate amount for a single item
+        function calculateItemAmount(row) {
+            const quantityInput = row.querySelector('.item-quantity');
+            const priceInput = row.querySelector('.item-unit-price');
+            const amountSpan = row.querySelector('.item-amount');
+            
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+            const amount = (quantity * price).toFixed(2);
+            
+            amountSpan.textContent = amount;
+            return parseFloat(amount);
+        }
+        
+        // Calculate the total of all items
         function calculateTotal() {
             let subtotal = 0;
+            const itemRows = document.querySelectorAll('.item-row');
             
-            $('.item-row').each(function() {
-                const amount = parseFloat($(this).find('.item-amount').text()) || 0;
-                subtotal += amount;
+            itemRows.forEach(row => {
+                subtotal += calculateItemAmount(row);
             });
             
-            $('#subtotal').text(subtotal.toFixed(2));
-            $('#total').text(subtotal.toFixed(2));
-            $('#total_amount').val(subtotal.toFixed(2));
+            // Update the displayed values
+            subtotalElement.textContent = subtotal.toFixed(2);
+            totalElement.textContent = subtotal.toFixed(2);
+            totalAmountInput.value = subtotal.toFixed(2);
         }
+        
+        // Initialize events for existing items
+        document.querySelectorAll('.item-row').forEach(row => {
+            addInputListeners(row);
+        });
+        
+        // Add event listeners to remove buttons
+        document.querySelectorAll('.remove-item').forEach(button => {
+            button.addEventListener('click', function() {
+                const row = this.closest('.item-row');
+                if (document.querySelectorAll('.item-row').length > 1) {
+                    row.remove();
+                    calculateTotal();
+                }
+            });
+        });
     });
+}
 </script>
 <?php elseif ($viewing): ?>
 <!-- Invoice View -->
@@ -446,8 +504,8 @@ if ($viewing) {
             <h4 class="font-medium text-gray-900 mb-2">Billed To</h4>
             <div class="text-sm text-gray-600">
                 <?php echo htmlspecialchars($invoice['first_name'] . ' ' . $invoice['last_name']); ?><br>
-                Phone: <?php echo htmlspecialchars($invoice['phone']); ?><br>
-                Email: <?php echo htmlspecialchars($invoice['email']); ?>
+                Phone: <?php echo !empty($invoice['phone']) ? htmlspecialchars($invoice['phone']) : 'Not provided'; ?><br>
+                Email: <?php echo !empty($invoice['email']) ? htmlspecialchars($invoice['email']) : 'Not provided'; ?>
             </div>
         </div>
     </div>
@@ -511,18 +569,19 @@ if ($viewing) {
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="payment_method">Payment Method</label>
                     <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                         id="payment_method" name="payment_method" required>
-                        <option value="cash" <?php echo $invoice['payment_method'] == 'cash' ? 'selected' : ''; ?>>Cash</option>
-                        <option value="credit_card" <?php echo $invoice['payment_method'] == 'credit_card' ? 'selected' : ''; ?>>Credit Card</option>
-                        <option value="mobile_money" <?php echo $invoice['payment_method'] == 'mobile_money' ? 'selected' : ''; ?>>Mobile Money</option>
-                        <option value="bank_transfer" <?php echo $invoice['payment_method'] == 'bank_transfer' ? 'selected' : ''; ?>>Bank Transfer</option>
-                        <option value="insurance" <?php echo $invoice['payment_method'] == 'insurance' ? 'selected' : ''; ?>>Insurance</option>
+                        <option value="">Select Payment Method</option>
+                        <option value="cash" <?php echo (isset($invoice['payment_method']) && $invoice['payment_method'] == 'cash') ? 'selected' : ''; ?>>Cash</option>
+                        <option value="credit_card" <?php echo (isset($invoice['payment_method']) && $invoice['payment_method'] == 'credit_card') ? 'selected' : ''; ?>>Credit Card</option>
+                        <option value="mobile_money" <?php echo (isset($invoice['payment_method']) && $invoice['payment_method'] == 'mobile_money') ? 'selected' : ''; ?>>Mobile Money</option>
+                        <option value="bank_transfer" <?php echo (isset($invoice['payment_method']) && $invoice['payment_method'] == 'bank_transfer') ? 'selected' : ''; ?>>Bank Transfer</option>
+                        <option value="insurance" <?php echo (isset($invoice['payment_method']) && $invoice['payment_method'] == 'insurance') ? 'selected' : ''; ?>>Insurance</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="payment_details">Payment Details</label>
                     <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                         id="payment_details" name="payment_details" type="text" placeholder="Reference/Details" 
-                        value="<?php echo htmlspecialchars($invoice['payment_details']); ?>">
+                        value="<?php echo isset($invoice['payment_details']) ? htmlspecialchars($invoice['payment_details']) : ''; ?>">
                 </div>
             </div>
             
