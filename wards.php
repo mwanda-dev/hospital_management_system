@@ -2,6 +2,7 @@
 <?php
 $page_title = "Ward Management";
 require_once 'includes/header.php';
+require_once 'functions/ward_functions.php';
 
 // Get system settings
 $settings_result = $conn->query("SELECT * FROM system_settings");
@@ -54,45 +55,55 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $reason = $_POST['reason'];
         $notes = $_POST['notes'] ?? '';
 
-        // Check if bed is available
-        $bed_check = $conn->prepare("SELECT b.*, w.ward_name FROM beds b JOIN wards w ON b.ward_id = w.ward_id WHERE b.bed_id = ? AND b.status = 'available'");
+        $bed_check = $conn->prepare("SELECT b.*, w.ward_name, w.ward_id FROM beds b JOIN wards w ON b.ward_id = w.ward_id WHERE b.bed_id = ? AND b.status = 'available'");
         $bed_check->bind_param("i", $bed_id);
         $bed_check->execute();
         $bed_result = $bed_check->get_result();
 
         if ($bed_result->num_rows > 0) {
             $bed_info = $bed_result->fetch_assoc();
-
-            $patient_check = $conn->prepare("SELECT * FROM admissions WHERE patient_id = ? AND status = 'admitted'");
-            $patient_check->bind_param("i", $patient_id);
-            $patient_check->execute();
-
-            if ($patient_check->get_result()->num_rows == 0) {
-                $conn->begin_transaction();
-
-                try {
-                    $stmt = $conn->prepare("
-                        INSERT INTO admissions (
-                            patient_id, bed_id, admitting_doctor_id, reason, notes
-                        ) VALUES (?, ?, ?, ?, ?)
-                    ");
-                    $stmt->bind_param("iiiss", $patient_id, $bed_id, $admitting_doctor_id, $reason, $notes);
-                    $stmt->execute();
-
-                    $stmt = $conn->prepare("UPDATE beds SET status = 'occupied' WHERE bed_id = ?");
-                    $stmt->bind_param("i", $bed_id);
-                    $stmt->execute();
-
-                    $conn->commit();
-                    $_SESSION['message'] = "Patient admitted successfully to " . $bed_info['ward_name'] . " - Bed " . $bed_info['bed_number'] . "!";
-                    header("Location: wards.php");
-                    exit();
-                } catch (Exception $e) {
-                    $conn->rollback();
-                    $error = "Error admitting patient: " . $e->getMessage();
-                }
+            
+            if (!wardHasCapacity($conn, $bed_info['ward_id'])) {
+                $error = "Ward " . $bed_info['ward_name'] . " is at full capacity!";
             } else {
-                $error = "Patient is already admitted to another bed!";
+                // Check if patient is already admitted
+                $patient_check = $conn->prepare("SELECT * FROM admissions WHERE patient_id = ? AND status = 'admitted'");
+                $patient_check->bind_param("i", $patient_id);
+                $patient_check->execute();
+
+                if ($patient_check->get_result()->num_rows == 0) {
+                    $conn->begin_transaction();
+
+                    try {
+                        $stmt = $conn->prepare("
+                            INSERT INTO admissions (
+                                patient_id, bed_id, admitting_doctor_id, reason, notes
+                            ) VALUES (?, ?, ?, ?, ?)
+                        ");
+                        $stmt->bind_param("iiiss", $patient_id, $bed_id, $admitting_doctor_id, $reason, $notes);
+                        $stmt->execute();
+
+                        $admission_id = $conn->insert_id;
+
+                        $stmt = $conn->prepare("UPDATE beds SET status = 'occupied' WHERE bed_id = ?");
+                        $stmt->bind_param("i", $bed_id);
+                        $stmt->execute();
+                        
+                        // Create log when a patient is admitted
+                        logAuditAction($conn, $_SESSION['user_id'], 'CREATE', 'admissions', $admission_id, 
+                                       null, json_encode(['patient_id' => $patient_id, 'bed_id' => $bed_id, 'reason' => $reason]));
+
+                        $conn->commit();
+                        $_SESSION['message'] = "Patient admitted successfully to " . $bed_info['ward_name'] . " - Bed " . $bed_info['bed_number'] . "!";
+                        header("Location: wards.php");
+                        exit();
+                    } catch (Exception $e) {
+                        $conn->rollback();
+                        $error = "Error admitting patient: " . $e->getMessage();
+                    }
+                } else {
+                    $error = "Patient is already admitted to another bed!";
+                }
             }
         } else {
             $error = "Selected bed is not available!";
@@ -131,52 +142,91 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $error = "Error discharging patient: " . $e->getMessage();
         }
     } elseif (isset($_POST['add_ward'])) {
-        $stmt = $conn->prepare("
-            INSERT INTO wards (
-                ward_name, ward_type, capacity, charge_per_day
-            ) VALUES (?, ?, ?, ?)
-        ");
-
-        $stmt->bind_param(
-            "ssid",
-            $_POST['ward_name'],
-            $_POST['ward_type'],
-            $_POST['capacity'],
-            $_POST['charge_per_day']
-        );
-
-        if ($stmt->execute()) {
-            $_SESSION['message'] = "Ward added successfully!";
+        $ward_data = [
+            'ward_name' => $_POST['ward_name'],
+            'ward_type' => $_POST['ward_type'],
+            'capacity' => intval($_POST['capacity']),
+            'charge_per_day' => floatval($_POST['charge_per_day'])
+        ];
+        
+        $result = addWard($conn, $ward_data, $_SESSION['user_id']);
+        if ($result) {
+            $_SESSION['message'] = "Ward added successfully with " . $ward_data['capacity'] . " beds!";
             header("Location: wards.php");
             exit();
         } else {
-            $error = "Error adding ward: " . $conn->error;
+            $error = "Error adding ward and beds.";
         }
+    } elseif (isset($_POST['add_bed'])) {
+        $bed_data = [
+            'ward_id' => intval($_POST['ward_id']),
+            'bed_number' => $_POST['bed_number'],
+            'status' => $_POST['status'] ?? 'available'
+        ];
+        
+        $result = addBed($conn, $bed_data, $_SESSION['user_id']);
+        if ($result) {
+            $_SESSION['message'] = "Bed added successfully!";
+        } else {
+            $error = "Error adding bed or bed number already exists in this ward.";
+        }
+        header("Location: wards.php");
+        exit();
+    } elseif (isset($_POST['update_bed'])) {
+        $bed_data = [
+            'bed_id' => intval($_POST['bed_id']),
+            'ward_id' => intval($_POST['ward_id']),
+            'bed_number' => $_POST['bed_number'],
+            'status' => $_POST['status']
+        ];
+        
+        $result = updateBed($conn, $bed_data, $_SESSION['user_id']);
+        if ($result) {
+            $_SESSION['message'] = "Bed updated successfully!";
+        } else {
+            $error = "Error updating bed.";
+        }
+        header("Location: wards.php");
+        exit();
+    } elseif (isset($_POST['delete_bed'])) {
+        $bed_id = intval($_POST['bed_id']);
+        
+        $result = deleteBed($conn, $bed_id, $_SESSION['user_id']);
+        if ($result) {
+            $_SESSION['message'] = "Bed deleted successfully!";
+        } else {
+            $error = "Error deleting bed. Cannot delete occupied beds.";
+        }
+        header("Location: wards.php");
+        exit();
+    } elseif (isset($_POST['set_maintenance'])) {
+        $bed_id = intval($_POST['bed_id']);
+        $reason = $_POST['maintenance_reason'] ?? 'Maintenance required';
+        
+        $result = setBedMaintenance($conn, $bed_id, $reason, $_SESSION['user_id']);
+        if ($result) {
+            $_SESSION['message'] = "Bed set to maintenance successfully!";
+        } else {
+            $error = "Error setting bed to maintenance. Cannot set occupied beds to maintenance.";
+        }
+        header("Location: wards.php");
+        exit();
     } elseif (isset($_POST['update_ward'])) {
-        $stmt = $conn->prepare("
-            UPDATE wards SET 
-                ward_name = ?,
-                ward_type = ?,
-                capacity = ?,
-                charge_per_day = ?
-            WHERE ward_id = ?
-        ");
-
-        $stmt->bind_param(
-            "ssidi",
-            $_POST['ward_name'],
-            $_POST['ward_type'],
-            $_POST['capacity'],
-            $_POST['charge_per_day'],
-            $_POST['ward_id']
-        );
-
-        if ($stmt->execute()) {
+        $ward_data = [
+            'ward_id' => intval($_POST['ward_id']),
+            'ward_name' => $_POST['ward_name'],
+            'ward_type' => $_POST['ward_type'],
+            'capacity' => intval($_POST['capacity']),
+            'charge_per_day' => floatval($_POST['charge_per_day'])
+        ];
+        
+        $result = updateWard($conn, $ward_data, $_SESSION['user_id']);
+        if ($result) {
             $_SESSION['message'] = "Ward updated successfully!";
             header("Location: wards.php");
             exit();
         } else {
-            $error = "Error updating ward: " . $conn->error;
+            $error = "Error updating ward.";
         }
     }
 }
@@ -465,10 +515,71 @@ if (isset($_GET['edit'])) {
     <div id="patientLocationResults" class="mt-4 space-y-2"></div>
 </div>
 
+<!-- Patient Admission Form -->
+<div class="bg-white rounded-lg shadow p-6 mt-6">
+    <h3 class="font-semibold text-lg mb-4">Patient Admission</h3>
+    <form method="POST" action="" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="patient_id">Patient</label>
+                <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="patient_id" name="patient_id" required>
+                    <option value="">Select Patient</option>
+                    <?php
+                    // Get patients who are not  admitted
+                    $patients = $conn->query("
+                        SELECT p.patient_id, p.first_name, p.last_name, p.phone 
+                        FROM patients p 
+                        WHERE p.patient_id NOT IN (
+                            SELECT patient_id FROM admissions WHERE status = 'admitted'
+                        )
+                        ORDER BY p.last_name, p.first_name
+                    ");
+                    while ($patient = $patients->fetch_assoc()): ?>
+                        <option value="<?php echo $patient['patient_id']; ?>">
+                            <?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name'] . ' (' . $patient['phone'] . ')'); ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="bed_id">Available Bed</label>
+                <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="bed_id" name="bed_id" required>
+                    <option value="">Select Bed</option>
+                    <?php
+                    $available_beds = getAvailableBeds($conn);
+                    foreach ($available_beds as $bed): ?>
+                        <option value="<?php echo $bed['bed_id']; ?>">
+                            <?php echo htmlspecialchars($bed['ward_name'] . ' - Bed ' . $bed['bed_number'] . ' (' . ucfirst($bed['ward_type']) . ')'); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        <div>
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="reason">Reason for Admission</label>
+            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                      id="reason" name="reason" rows="3" placeholder="Enter reason for admission..." required></textarea>
+        </div>
+        <div>
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="notes">Additional Notes</label>
+            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                      id="notes" name="notes" rows="2" placeholder="Optional notes..."></textarea>
+        </div>
+        <div class="flex justify-end">
+            <button type="submit" name="admit_patient" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                <i class="fas fa-user-plus"></i> Admit Patient
+            </button>
+        </div>
+    </form>
+</div>
+
 <!-- Beds Management -->
 <div class="bg-white rounded-lg shadow overflow-hidden mt-6">
     <div class="p-4 border-b flex justify-between items-center">
         <h3 class="font-semibold">Bed Management</h3>
+        <button onclick="openAddBedModal()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            <i class="fas fa-plus"></i> Add Bed
+        </button>
     </div>
     
     <div class="overflow-x-auto">
