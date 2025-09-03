@@ -32,7 +32,7 @@
                 <li>
                     <a href="patients.php" class="flex items-center space-x-3 p-2 rounded-lg <?php echo basename($_SERVER['PHP_SELF']) == 'patients.php' ? 'active-nav-item' : 'hover:bg-blue-50'; ?>">
                         <i class="fas fa-user-plus w-5 text-center"></i>
-                        <span>Patient Registration</span>
+                        <span>Patient Management</span>
                     </a>
                 </li>
                 <li>

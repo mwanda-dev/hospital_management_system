@@ -193,7 +193,6 @@ if (isset($_GET['edit'])) {
                     id="gender" name="gender" required>
                     <option value="male" <?php echo (isset($patient['gender']) && $patient['gender'] == 'male') ? 'selected' : ''; ?>>Male</option>
                     <option value="female" <?php echo (isset($patient['gender']) && $patient['gender'] == 'female') ? 'selected' : ''; ?>>Female</option>
-                    <option value="other" <?php echo (isset($patient['gender']) && $patient['gender'] == 'other') ? 'selected' : ''; ?>>Other</option>
                 </select>
             </div>
             <div>
@@ -256,17 +255,17 @@ if (isset($_GET['edit'])) {
         </div>
         
         <div class="mt-6 flex justify-end space-x-4">
-            <a href="patients.php" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                Cancel
+            <a href="patients.php" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center">
+                <i class="fas fa-times-circle mr-2"></i> Cancel
             </a>
             <?php if (isset($_GET['edit'])): ?>
                 <input type="hidden" name="patient_id" value="<?php echo $patient['patient_id']; ?>">
-                <button type="submit" name="update_patient" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                    Update Patient
+                <button type="submit" name="update_patient" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center">
+                    <i class="fas fa-save mr-2"></i> Update Patient
                 </button>
             <?php else: ?>
-                <button type="submit" name="add_patient" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                    Add Patient
+                <button type="submit" name="add_patient" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center">
+                    <i class="fas fa-user-plus mr-2"></i> Add Patient
                 </button>
             <?php endif; ?>
         </div>
@@ -278,8 +277,16 @@ if (isset($_GET['edit'])) {
     <div class="p-4 border-b flex justify-between items-center">
         <h3 class="font-semibold">Patient Records</h3>
         <div class="flex space-x-2">
-            <a href="patients.php?add" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                <i class="fas fa-plus"></i> Add Patient
+            <!-- Search Box -->
+            <div class="relative">
+                <input type="text" id="patient-search" placeholder="Search patients..." 
+                    class="border rounded-lg py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="absolute left-3 top-2.5 text-gray-400">
+                    <i class="fas fa-search"></i>
+                </div>
+            </div>
+            <a href="patients.php?add" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center">
+                <i class="fas fa-plus-circle mr-2"></i> Add Patient
             </a>
         </div>
     </div>
@@ -297,7 +304,7 @@ if (isset($_GET['edit'])) {
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody id="patients-table-body" class="bg-white divide-y divide-gray-200">
                 <?php
                 // Pagination
                 $records_per_page = $settings['records_per_page'];
@@ -319,7 +326,7 @@ if (isset($_GET['edit'])) {
                     $age = date_diff(date_create($patient['date_of_birth']), date_create('today'))->y;
                     $reg_date = formatSystemDate($patient['registration_date']);
                 ?>
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 patient-row" data-search="<?php echo htmlspecialchars(strtolower($patient['first_name'] . ' ' . $patient['last_name'] . ' ' . $patient['phone'] . ' ' . $patient['email'] . ' PAT-' . str_pad($patient['patient_id'], 4, '0', STR_PAD_LEFT))); ?>">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">PAT-<?php echo str_pad($patient['patient_id'], 4, '0', STR_PAD_LEFT); ?></td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
@@ -337,9 +344,17 @@ if (isset($_GET['edit'])) {
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo htmlspecialchars($patient['phone']); ?></td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo $reg_date; ?></td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <a href="patients.php?edit=<?php echo $patient['patient_id']; ?>" class="text-blue-600 hover:text-blue-900 mr-3">Edit</a>
-                        <a href="medical_records.php?patient_id=<?php echo $patient['patient_id']; ?>" class="text-green-600 hover:text-green-900 mr-3">Records</a>
-                        <a href="patients.php?delete=<?php echo $patient['patient_id']; ?>" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure you want to delete this patient?');">Delete</a>
+                        <div class="flex space-x-2">
+                            <a href="patients.php?edit=<?php echo $patient['patient_id']; ?>" class="text-blue-600 hover:text-blue-900 flex items-center" title="Edit">
+                                <i class="fas fa-edit mr-1"></i> Edit
+                            </a>
+                            <a href="medical_records.php?patient_id=<?php echo $patient['patient_id']; ?>" class="text-green-600 hover:text-green-900 flex items-center" title="Medical Records">
+                                <i class="fas fa-file-medical mr-1"></i> Records
+                            </a>
+                            <a href="patients.php?delete=<?php echo $patient['patient_id']; ?>" class="text-red-600 hover:text-red-900 flex items-center" title="Delete" onclick="return confirm('Are you sure you want to delete this patient?');">
+                                <i class="fas fa-trash-alt mr-1"></i> Delete
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 <?php endwhile; ?>
@@ -352,12 +367,12 @@ if (isset($_GET['edit'])) {
             <div class="flex-1 flex justify-between sm:hidden">
                 <?php if ($page > 1): ?>
                 <a href="patients.php?page=<?php echo $page - 1; ?>" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    Previous
+                    <i class="fas fa-chevron-left mr-1"></i> Previous
                 </a>
                 <?php endif; ?>
                 <?php if ($page < $total_pages): ?>
                 <a href="patients.php?page=<?php echo $page + 1; ?>" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    Next
+                    Next <i class="fas fa-chevron-right ml-1"></i>
                 </a>
                 <?php endif; ?>
             </div>
@@ -415,6 +430,28 @@ if (isset($_GET['edit'])) {
         <?php endif; ?>
     </div>
 </div>
+
+<!-- JavaScript for Live Search -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('patient-search');
+    const patientRows = document.querySelectorAll('.patient-row');
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        
+        patientRows.forEach(row => {
+            const searchData = row.getAttribute('data-search');
+            
+            if (searchData.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
 <?php endif; ?>
 
 <?php require_once 'includes/footer.php'; ?>
