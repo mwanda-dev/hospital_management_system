@@ -1,9 +1,9 @@
  
 <?php
-$page_title = "Reports";
-require_once 'includes/header.php';
+require_once 'includes/config.php';
+checkAuth();
 
-// Handle CSV export
+// Handle CSV export BEFORE any HTML output
 if (isset($_GET['export']) && $_GET['export'] == 'csv') {
     $export_type = $_GET['type'];
     $export_start = $_GET['start'];
@@ -109,6 +109,10 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
     fclose($output);
     exit();
 }
+
+// Set page title and include header for HTML output
+$page_title = "Reports";
+require_once 'includes/header.php';
 
 // Generate reports based on filters
 $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');
