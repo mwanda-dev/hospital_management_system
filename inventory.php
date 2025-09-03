@@ -245,7 +245,46 @@ if (isset($_GET['edit'])) {
     </form>
 </div>
 <?php else: ?>
-<!-- Inventory List -->
+<!-- Inventory Summary and List -->
+<?php if (!$editing): ?>
+<?php
+// Fetch inventory summary by category
+$summary = $conn->query("
+    SELECT item_type, 
+           SUM(quantity_in_stock) AS total_quantity, 
+           SUM(quantity_in_stock * cost_per_unit) AS total_value
+    FROM inventory
+    GROUP BY item_type
+");
+
+$categories = [];
+while ($row = $summary->fetch_assoc()) {
+    $categories[$row['item_type']] = $row;
+}
+// Ensure all categories exist in the array (even if empty)
+foreach (['medication', 'supply', 'equipment'] as $type) {
+    if (!isset($categories[$type])) {
+        $categories[$type] = ['total_quantity' => 0, 'total_value' => 0];
+    }
+}
+?>
+<!-- Inventory Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <?php foreach (['medication', 'supply', 'equipment'] as $type): ?>
+        <div class="bg-white shadow rounded-lg p-6">
+            <h4 class="font-semibold text-lg capitalize mb-2"><?php echo $type; ?></h4>
+            <p class="text-gray-600">Available Items: 
+                <span class="font-bold"><?php echo $categories[$type]['total_quantity']; ?></span>
+            </p>
+            <p class="text-gray-600">Total Value: 
+                <span class="font-bold">
+                    <?php echo format_currency($categories[$type]['total_value'], $settings['currency_symbol']); ?>
+                </span>
+            </p>
+        </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
 <div class="bg-white rounded-lg shadow overflow-hidden">
     <div class="p-4 border-b flex justify-between items-center">
         <h3 class="font-semibold">Inventory Items</h3>
