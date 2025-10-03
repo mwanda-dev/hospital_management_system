@@ -123,10 +123,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_appointment']))
     $stmt->close();
 }
 
-// Fetch doctors for the dropdown
+// Fetch doctors for the dropdown (only active users with role 'doctor')
 $doctors = [];
-$doctor_result = $conn->query("SELECT user_id, first_name, last_name, specialization FROM users WHERE status = 'active' ORDER BY first_name, last_name");
-if ($doctor_result->num_rows > 0) {
+$doctor_result = $conn->query("SELECT user_id, first_name, last_name, specialization FROM users WHERE role = 'doctor' AND status = 'active' ORDER BY last_name, first_name");
+if ($doctor_result && $doctor_result->num_rows > 0) {
     while ($row = $doctor_result->fetch_assoc()) {
         $doctors[] = $row;
     }
@@ -729,6 +729,22 @@ if (isset($_GET['cancel_id'])) {
         </div>
     </div>
     
+        <!-- Appointment View Modal -->
+        <div class="modal" id="appointmentViewModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Appointment Details</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body" id="appointmentViewBody">
+                    <!-- details populated by JS -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="action-btn btn-secondary" id="closeAppointmentView">Close</button>
+                </div>
+            </div>
+        </div>
+
     <div class="container main-content">
         <div class="page-header">
             <h2 class="page-title">Appointment Management</h2>
@@ -741,6 +757,7 @@ if (isset($_GET['cancel_id'])) {
             <?php echo $success; ?>
         </div>
         <?php endif; ?>
+        
         
         <?php if (isset($error)): ?>
         <div class="alert alert-error">
@@ -1138,6 +1155,50 @@ if (isset($_GET['cancel_id'])) {
             // Open the cancel modal
             openModal(cancelModal);
         <?php endif; ?>
+
+        // Expose appointments data to JS for view modal (moved here to avoid HTML embedding issues)
+        const APPOINTMENTS = <?php echo json_encode($appointments); ?>;
+
+        // View appointment buttons
+        const viewButtons = document.querySelectorAll('.view-btn');
+        const appointmentViewModal = document.getElementById('appointmentViewModal');
+        const appointmentViewBody = document.getElementById('appointmentViewBody');
+        const closeAppointmentView = document.getElementById('closeAppointmentView');
+
+        function renderAppointmentDetails(id) {
+            const appt = APPOINTMENTS.find(a => a.appointment_id == id);
+            if (!appt) {
+                if (appointmentViewBody) appointmentViewBody.innerHTML = '<p>Appointment not found.</p>';
+                return;
+            }
+
+            const dateStr = new Date(appt.appointment_date).toLocaleDateString();
+            const start = new Date(appt.appointment_date + ' ' + appt.start_time).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+            const end = new Date(appt.appointment_date + ' ' + appt.end_time).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+
+            let html = `<p><strong>Date:</strong> ${dateStr}</p>`;
+            html += `<p><strong>Time:</strong> ${start} - ${end}</p>`;
+            html += `<p><strong>Doctor:</strong> Dr. ${appt.first_name} ${appt.last_name} (${appt.specialization || 'General'})</p>`;
+            html += `<p><strong>Purpose:</strong> ${appt.purpose || ''}</p>`;
+            html += `<p><strong>Status:</strong> ${appt.status}</p>`;
+            if (appt.notes) html += `<p><strong>Notes:</strong><br>${appt.notes}</p>`;
+
+            if (appointmentViewBody) appointmentViewBody.innerHTML = html;
+        }
+
+        if (viewButtons) {
+            viewButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    renderAppointmentDetails(id);
+                    if (appointmentViewModal) openModal(appointmentViewModal);
+                });
+            });
+        }
+
+        if (closeAppointmentView) {
+            closeAppointmentView.addEventListener('click', function() { if (appointmentViewModal) closeModal(appointmentViewModal); });
+        }
     </script>
 </body>
 </html>
