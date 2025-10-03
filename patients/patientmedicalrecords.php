@@ -64,6 +64,79 @@ if (isset($_GET['download']) && is_numeric($_GET['download'])) {
         exit();
     }
 }
+
+// Handle AJAX request for record details
+if (isset($_GET['get_record']) && is_numeric($_GET['get_record'])) {
+    $record_id = $_GET['get_record'];
+    
+    // Verify the record belongs to the current patient
+    $stmt = $conn->prepare("
+        SELECT mr.*, d.first_name, d.last_name, d.specialization 
+        FROM medical_records mr 
+        INNER JOIN users d ON mr.doctor_id = d.user_id 
+        WHERE mr.record_id = ? AND mr.patient_id = ?
+    ");
+    $stmt->bind_param("ii", $record_id, $patient_id);
+    $stmt->execute();
+    $record_result = $stmt->get_result();
+    
+    if ($record_result->num_rows === 1) {
+        $record = $record_result->fetch_assoc();
+        
+        // Format the response as HTML
+        echo '<div class="record-details">';
+        echo '<div class="detail-row">';
+        echo '<div class="detail-label">Record ID:</div>';
+        echo '<div class="detail-value">#' . $record['record_id'] . '</div>';
+        echo '</div>';
+        
+        echo '<div class="detail-row">';
+        echo '<div class="detail-label">Date:</div>';
+        echo '<div class="detail-value">' . date('F j, Y', strtotime($record['record_date'])) . '</div>';
+        echo '</div>';
+        
+        echo '<div class="detail-row">';
+        echo '<div class="detail-label">Type:</div>';
+        echo '<div class="detail-value">' . ucfirst(str_replace('_', ' ', $record['record_type'])) . '</div>';
+        echo '</div>';
+        
+        echo '<div class="detail-row">';
+        echo '<div class="detail-label">Title:</div>';
+        echo '<div class="detail-value">' . htmlspecialchars($record['title']) . '</div>';
+        echo '</div>';
+        
+        echo '<div class="detail-row">';
+        echo '<div class="detail-label">Doctor:</div>';
+        echo '<div class="detail-value">Dr. ' . $record['first_name'] . ' ' . $record['last_name'] . '</div>';
+        echo '</div>';
+        
+        echo '<div class="detail-row">';
+        echo '<div class="detail-label">Specialization:</div>';
+        echo '<div class="detail-value">' . htmlspecialchars($record['specialization']) . '</div>';
+        echo '</div>';
+        
+        if (!empty($record['description'])) {
+            echo '<div class="detail-row full-width">';
+            echo '<div class="detail-label">Description:</div>';
+            echo '<div class="detail-value">' . nl2br(htmlspecialchars($record['description'])) . '</div>';
+            echo '</div>';
+        }
+        
+        if (!empty($record['notes'])) {
+            echo '<div class="detail-row full-width">';
+            echo '<div class="detail-label">Doctor\'s Notes:</div>';
+            echo '<div class="detail-value">' . nl2br(htmlspecialchars($record['notes'])) . '</div>';
+            echo '</div>';
+        }
+        
+        echo '</div>';
+        
+        exit();
+    } else {
+        echo '<div class="error-message">Record not found or access denied.</div>';
+        exit();
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -100,7 +173,7 @@ if (isset($_GET['download']) && is_numeric($_GET['download'])) {
             line-height: 1.6;
         }
 
-                /* Dropdown Styles */
+        /* Dropdown Styles */
         .dropdown {
             position: relative;
             display: inline-block;
@@ -459,7 +532,7 @@ if (isset($_GET['download']) && is_numeric($_GET['download'])) {
             background-color: white;
             border-radius: 10px;
             width: 90%;
-            max-width: 600px;
+            max-width: 700px;
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
@@ -613,6 +686,47 @@ if (isset($_GET['download']) && is_numeric($_GET['download'])) {
             color: var(--gray);
         }
         
+        /* Record Details Styles */
+        .record-details {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .detail-row {
+            display: flex;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .detail-row.full-width {
+            flex-direction: column;
+        }
+        
+        .detail-label {
+            width: 150px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .detail-value {
+            flex: 1;
+            color: var(--gray);
+        }
+        
+        .detail-row.full-width .detail-value {
+            margin-top: 0.5rem;
+            line-height: 1.6;
+        }
+        
+        .error-message {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .nav-menu {
@@ -652,6 +766,15 @@ if (isset($_GET['download']) && is_numeric($_GET['download'])) {
                 width: 100%;
                 margin-bottom: 0.25rem;
             }
+            
+            .detail-row {
+                flex-direction: column;
+            }
+            
+            .detail-label {
+                width: 100%;
+                margin-bottom: 0.25rem;
+            }
         }
         
         .no-records {
@@ -664,6 +787,17 @@ if (isset($_GET['download']) && is_numeric($_GET['download'])) {
             font-size: 3rem;
             margin-bottom: 1rem;
             color: #ddd;
+        }
+        
+        /* Button Group Styles */
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
         }
     </style>
 </head>
@@ -752,12 +886,14 @@ if (isset($_GET['download']) && is_numeric($_GET['download'])) {
                             <td>Dr. <?php echo $doctor_name; ?></td>
                             <td><?php echo $record['title']; ?></td>
                             <td>
-                                <button class="action-btn view-record" data-id="<?php echo $record['record_id']; ?>" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
-                                    <i class="fas fa-eye"></i> View
-                                </button>
-                                <a href="?download=<?php echo $record['record_id']; ?>" class="action-btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
-                                    <i class="fas fa-download"></i>
-                                </a>
+                                <div class="btn-group">
+                                    <button class="action-btn btn-sm view-record" data-id="<?php echo $record['record_id']; ?>">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    <a href="?download=<?php echo $record['record_id']; ?>" class="action-btn btn-secondary btn-sm">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -815,12 +951,14 @@ if (isset($_GET['download']) && is_numeric($_GET['download'])) {
                             <td>Dr. <?php echo $doctor_name; ?></td>
                             <td><span class="status completed">Completed</span></td>
                             <td>
-                                <button class="action-btn view-record" data-id="<?php echo $record['record_id']; ?>" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
-                                    <i class="fas fa-eye"></i> View
-                                </button>
-                                <a href="?download=<?php echo $record['record_id']; ?>" class="action-btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
-                                    <i class="fas fa-download"></i>
-                                </a>
+                                <div class="btn-group">
+                                    <button class="action-btn btn-sm view-record" data-id="<?php echo $record['record_id']; ?>">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    <a href="?download=<?php echo $record['record_id']; ?>" class="action-btn btn-secondary btn-sm">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -891,7 +1029,7 @@ if (isset($_GET['download']) && is_numeric($_GET['download'])) {
             });
         });
 
-            // Toggle dropdown visibility
+        // Toggle dropdown visibility
         function toggleDropdown() {
             document.getElementById("userDropdown").classList.toggle("show");
         }
@@ -915,14 +1053,19 @@ if (isset($_GET['download']) && is_numeric($_GET['download'])) {
             modal.style.display = 'flex';
             
             // AJAX request to fetch record details
-            fetch(`get_record_details.php?id=${recordId}`)
-                .then(response => response.text())
+            fetch(`?get_record=${recordId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.text();
+                })
                 .then(data => {
                     modalBody.innerHTML = data;
                     downloadModalBtn.href = `?download=${recordId}`;
                 })
                 .catch(error => {
-                    modalBody.innerHTML = `<div class="alert alert-error">Error loading record details: ${error}</div>`;
+                    modalBody.innerHTML = `<div class="error-message">Error loading record details: ${error}</div>`;
                 });
         }
         
@@ -943,7 +1086,9 @@ if (isset($_GET['download']) && is_numeric($_GET['download'])) {
         // Download all records
         function downloadAllRecords() {
             if (confirm('This will download all your medical records as a ZIP file. Continue?')) {
-                window.location.href = 'download_all_records.php';
+                // In a real implementation, this would redirect to a script that generates a ZIP file
+                alert('This feature would generate a ZIP file with all your records in a real implementation.');
+                // window.location.href = 'download_all_records.php';
             }
         }
         
