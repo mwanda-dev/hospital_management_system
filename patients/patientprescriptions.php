@@ -529,6 +529,14 @@ if (isset($_GET['logout'])) {
             </ul>
         </div>
     </div>
+
+    <!-- Prescription Details Modal -->
+    <div id="prescriptionModal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:1000;">
+        <div id="prescriptionModalContent" style="background:white; width:95%; max-width:800px; margin:40px auto; border-radius:8px; padding:1rem; max-height:90vh; overflow:auto; position:relative;">
+            <button id="closePrescriptionModal" class="btn" aria-label="Close" title="Close" style="position:absolute; right:12px; top:12px; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; line-height:1; padding:0; border:1px solid #e5e7eb; background:white; box-shadow:0 2px 6px rgba(0,0,0,0.08);">&times;</button>
+            <div id="prescriptionDetails"></div>
+        </div>
+    </div>
     
     <div class="container main-content">
         <div class="page-header">
@@ -629,7 +637,7 @@ if (isset($_GET['logout'])) {
                             </ul>
                         </div>
                         <div class="prescription-actions" style="margin-top: 1rem;">
-                            <button class="btn btn-outline">Details</button>
+                            <button class="btn btn-outline view-prescription" data-id="<?php echo $prescription_id; ?>">Details</button>
                             <?php if ($prescription['refills_remaining'] > 0): ?>
                             <?php endif; ?>
                         </div>
@@ -679,7 +687,7 @@ if (isset($_GET['logout'])) {
                             </div>
                             <span class="status <?php echo $prescription['status']; ?>"><?php echo ucfirst($prescription['status']); ?></span>
                             <div class="prescription-actions">
-                                <button class="btn btn-outline">Details</button>
+                                <button class="btn btn-outline view-prescription" data-id="<?php echo $prescription_id; ?>">Details</button>
                             </div>
                         </div>
                         <?php endforeach; ?>
@@ -776,7 +784,64 @@ if (isset($_GET['logout'])) {
             statusFilter.addEventListener('change', filterPrescriptions);
             sortFilter.addEventListener('change', filterPrescriptions);
             searchInput.addEventListener('keyup', filterPrescriptions);
-        
+
+            // Expose server-side prescriptions to JS for details modal
+            const PRESCRIPTIONS = <?php echo json_encode($prescriptions); ?>;
+            const PRESCRIPTION_ITEMS = <?php echo json_encode($prescription_items); ?>;
+
+            // Modal elements
+            const prescriptionModal = document.getElementById('prescriptionModal');
+            const prescriptionDetails = document.getElementById('prescriptionDetails');
+            const closePrescriptionModal = document.getElementById('closePrescriptionModal');
+
+            function renderPrescription(prescriptionId) {
+                const pres = PRESCRIPTIONS[prescriptionId];
+                const items = PRESCRIPTION_ITEMS[prescriptionId] || [];
+                if (!pres) {
+                    prescriptionDetails.innerHTML = '<p>Prescription not found.</p>';
+                    return;
+                }
+
+                let html = `<h3>Prescription #${prescriptionId}</h3>`;
+                html += `<p><strong>Date:</strong> ${new Date(pres.prescription_date).toLocaleDateString()}</p>`;
+                html += `<p><strong>Doctor:</strong> Dr. ${pres.first_name} ${pres.last_name}</p>`;
+                if (pres.instructions) html += `<p><strong>Instructions:</strong> ${pres.instructions}</p>`;
+                html += '<h4>Medications</h4>';
+                html += '<ul>';
+                if (items.length > 0) {
+                    items.forEach(it => {
+                        html += `<li><strong>${it.medication_name}</strong> - ${it.dosage}, ${it.frequency}, ${it.duration}`;
+                        if (it.notes) html += `<br><small>Notes: ${it.notes}</small>`;
+                        html += '</li>';
+                    });
+                } else {
+                    html += '<li>No medications found.</li>';
+                }
+                html += '</ul>';
+
+                prescriptionDetails.innerHTML = html;
+            }
+
+            // Attach handlers to Details buttons
+            const detailButtons = document.querySelectorAll('.view-prescription');
+            detailButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    renderPrescription(id);
+                    prescriptionModal.style.display = 'flex';
+                    document.getElementById('prescriptionModalContent').scrollTop = 0;
+                });
+            });
+
+            // Close modal
+            if (closePrescriptionModal) {
+                const closeModal = function() { prescriptionModal.style.display = 'none'; document.removeEventListener('keydown', escHandler); };
+                closePrescriptionModal.addEventListener('click', closeModal);
+                prescriptionModal.addEventListener('click', function(e) { if (e.target === prescriptionModal) closeModal(); });
+                const escHandler = function(e) { if (e.key === 'Escape' || e.key === 'Esc') closeModal(); };
+                document.addEventListener('keydown', escHandler);
+            }
+
         });
     </script>
 </body>
