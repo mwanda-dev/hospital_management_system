@@ -598,6 +598,11 @@ if (isset($_GET['logout'])) {
         <div class="page-header">
             <h1 class="page-title">Billing & Payments</h1>
             <button class="btn btn-primary"><i class="fas fa-download"></i> Download Statements</button>
+        
+                <script>
+                    // Expose billing data to JS for the insurance modal
+                    const BILLING_DATA = <?php echo json_encode($billing_data); ?>;
+                </script>
         </div>
         
         <div class="stats-grid">
@@ -695,6 +700,7 @@ if (isset($_GET['logout'])) {
                         <td>
                             <button class="btn btn-outline view-bill" data-id="<?php echo $bill['invoice_id']; ?>">View</button>
                             <?php if ($bill['status'] !== 'paid' && $bill['status'] !== 'canceled'): ?>
+                                <!-- Insurance payments moved to Payment Methods card -->
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -758,12 +764,30 @@ if (isset($_GET['logout'])) {
                         </div>
                     </div>
                     <div class="payment-method-actions">
-                        <button class="btn btn-outline">Select</button>
+                        <?php if ($method === 'insurance'): ?>
+                            <button class="btn btn-outline select-insurance">Select</button>
+                        <?php else: ?>
+                            <button class="btn btn-outline">Select</button>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endforeach; ?>
             </div>
         </div>
+    </div>
+
+    <!-- Insurance Modal -->
+    <div id="insuranceModal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+        <div style="background:white; width:90%; max-width:800px; margin:40px auto; border-radius:8px; padding:1rem; max-height:80vh; overflow:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Bill to Insurance - Select Invoice</h3>
+                <button id="closeInsuranceModal" class="btn">Close</button>
+            </div>
+            <div id="insuranceInvoiceList" style="margin-top:1rem;">
+                <!-- Unpaid invoices will be injected here -->
+            </div>
+        </div>
+    </div>
     </div>
 
     <!-- View Bill Modal (to be implemented) -->
@@ -828,6 +852,97 @@ if (isset($_GET['logout'])) {
                     alert('Initiating payment of $' + amount + ' for invoice ID: ' + billId + '\nThis would redirect to a payment processing page.');
                 });
             });
+
+            // Use Insurance buttons
+            // Insurance modal handlers (opened from Payment Methods card)
+            const selectInsuranceBtn = document.querySelector('.select-insurance');
+            const insuranceModal = document.getElementById('insuranceModal');
+            const closeInsuranceModal = document.getElementById('closeInsuranceModal');
+            const insuranceInvoiceList = document.getElementById('insuranceInvoiceList');
+
+            function renderUnpaidInvoices() {
+                insuranceInvoiceList.innerHTML = '';
+                const unpaid = BILLING_DATA.filter(b => b.status !== 'paid' && b.status !== 'canceled');
+                if (unpaid.length === 0) {
+                    insuranceInvoiceList.innerHTML = '<p>No unpaid invoices available to bill to insurance.</p>';
+                    return;
+                }
+
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.style.borderCollapse = 'collapse';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Invoice #</th>
+                            <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Date</th>
+                            <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Amount</th>
+                            <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Status</th>
+                            <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Action</th>
+                        </tr>
+                    </thead>
+                `;
+                const tbody = document.createElement('tbody');
+
+                unpaid.forEach(inv => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding:8px; border-bottom:1px solid #eee;">INV-${String(inv.invoice_id).padStart(5,'0')}</td>
+                        <td style="padding:8px; border-bottom:1px solid #eee;">${new Date(inv.invoice_date).toLocaleDateString()}</td>
+                        <td style="padding:8px; border-bottom:1px solid #eee;">$${Number(inv.total_amount).toFixed(2)}</td>
+                        <td style="padding:8px; border-bottom:1px solid #eee;">${inv.status}</td>
+                        <td style="padding:8px; border-bottom:1px solid #eee;"><button class="btn btn-success bill-to-insurance" data-id="${inv.invoice_id}">Bill to Insurance</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                table.appendChild(tbody);
+                insuranceInvoiceList.appendChild(table);
+
+                // attach handlers
+                const billBtns = insuranceInvoiceList.querySelectorAll('.bill-to-insurance');
+                billBtns.forEach(b => {
+                    b.addEventListener('click', function() {
+                        const invoiceId = this.getAttribute('data-id');
+                        if (!confirm('Send this invoice to your insurance provider?')) return;
+
+                        const formData = new FormData();
+                        formData.append('invoice_id', invoiceId);
+
+                        fetch('../ajax/process_insurance_payment.php', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            body: formData
+                        })
+                        .then(resp => resp.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert(data.message);
+                                window.location.reload();
+                            } else {
+                                alert('Error: ' + data.message);
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            alert('An unexpected error occurred.');
+                        });
+                    });
+                });
+            }
+
+            if (selectInsuranceBtn) {
+                selectInsuranceBtn.addEventListener('click', function() {
+                    renderUnpaidInvoices();
+                    insuranceModal.style.display = 'flex';
+                });
+            }
+
+            if (closeInsuranceModal) {
+                closeInsuranceModal.addEventListener('click', function() {
+                    insuranceModal.style.display = 'none';
+                });
+            }
         });
     </script>
 </body>
