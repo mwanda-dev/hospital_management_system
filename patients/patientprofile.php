@@ -47,10 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
     $address = trim($_POST['address']);
     $emergency_contact_name = trim($_POST['emergency_contact_name']);
     $emergency_contact_phone = trim($_POST['emergency_contact_phone']);
-    $insurance_provider = trim($_POST['insurance_provider']);
-    $insurance_policy_number = trim($_POST['insurance_policy_number']);
     
-    // Update query
+    // NOTE: insurance_provider and insurance_policy_number are intentionally not
+    // editable by patients. Do not accept/update these fields from the patient UI.
+    
+    // Update query (exclude insurance fields to prevent patient-side changes)
     $update_sql = "UPDATE patients SET 
                   first_name = ?, 
                   last_name = ?, 
@@ -58,16 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
                   email = ?, 
                   address = ?, 
                   emergency_contact_name = ?, 
-                  emergency_contact_phone = ?, 
-                  insurance_provider = ?, 
-                  insurance_policy_number = ? 
+                  emergency_contact_phone = ? 
                   WHERE patient_id = ?";
     
     $update_stmt = $conn->prepare($update_sql);
-    $update_stmt->bind_param("sssssssssi", 
+    $update_stmt->bind_param("sssssssi", 
         $first_name, $last_name, $phone, $email, $address, 
-        $emergency_contact_name, $emergency_contact_phone, 
-        $insurance_provider, $insurance_policy_number, $patient_id
+        $emergency_contact_name, $emergency_contact_phone, $patient_id
     );
     
     if ($update_stmt->execute()) {
@@ -864,7 +862,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
             if (editPersonalBtn) {
                 editPersonalBtn.addEventListener('click', function() {
                     // Only allow editing for fields with a name attribute (exclude date_of_birth, gender)
+                    // Enable editing for patient-editable fields only. Keep insurance fields readonly.
                     personalForm.querySelectorAll('input[name], textarea[name]').forEach(control => {
+                        const name = control.getAttribute('name') || '';
+                        if (name === 'insurance_provider' || name === 'insurance_policy_number') {
+                            // keep insurance fields readonly
+                            return;
+                        }
                         control.removeAttribute('readonly');
                     });
                     editPersonalBtn.style.display = 'none';
