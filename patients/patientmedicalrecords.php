@@ -1026,7 +1026,140 @@ if (isset($_GET['get_record']) && is_numeric($_GET['get_record'])) {
             </div>
         </div>
         
-        <!-- Additional tabs for diagnosis and prescription would follow the same pattern -->
+        <div class="tab-content" id="diagnosis-tab">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Diagnoses</h3>
+                </div>
+
+                <?php
+                $diagnosis_records = array_filter($records, function($record) {
+                    return $record['record_type'] === 'diagnosis';
+                });
+
+                if (count($diagnosis_records) > 0):
+                ?>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>ICD Code</th>
+                            <th>Diagnosis</th>
+                            <th>Doctor</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($diagnosis_records as $record):
+                            $doctor_name = $record['first_name'] . ' ' . $record['last_name'];
+                            $record_date = date('M j, Y', strtotime($record['record_date']));
+                        ?>
+                        <tr>
+                            <td><?php echo $record_date; ?></td>
+                            <td><?php echo htmlspecialchars($record['diagnosis_code'] ?? ''); ?></td>
+                            <td><?php echo htmlspecialchars($record['title']); ?></td>
+                            <td>Dr. <?php echo $doctor_name; ?></td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="action-btn btn-sm view-record" data-id="<?php echo $record['record_id']; ?>">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    <a href="?download=<?php echo $record['record_id']; ?>" class="action-btn btn-secondary btn-sm">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php else: ?>
+                <div class="no-records">
+                    <i class="fas fa-notes-medical"></i>
+                    <h3>No Diagnoses Found</h3>
+                    <p>You don't have any recorded diagnoses yet.</p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="tab-content" id="prescription-tab">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Your Prescriptions</h3>
+                </div>
+
+                <?php
+                // Fetch prescriptions for the current patient (reuse logic from patientprescriptions.php)
+                $prescriptions = [];
+                $prescription_items = [];
+                try {
+                    $pstmt = $conn->prepare("SELECT p.*, d.first_name, d.last_name FROM prescriptions p LEFT JOIN users d ON p.doctor_id = d.user_id WHERE p.patient_id = ? ORDER BY p.prescription_date DESC");
+                    $pstmt->bind_param("i", $patient_id);
+                    $pstmt->execute();
+                    $pres_res = $pstmt->get_result();
+                    while ($row = $pres_res->fetch_assoc()) {
+                        $prescriptions[$row['prescription_id']] = $row;
+                    }
+
+                    if (!empty($prescriptions)) {
+                        $prescription_ids = array_keys($prescriptions);
+                        $placeholders = implode(',', array_fill(0, count($prescription_ids), '?'));
+                        $stmt_items = $conn->prepare("SELECT * FROM prescription_items WHERE prescription_id IN ($placeholders)");
+                        $types = str_repeat('i', count($prescription_ids));
+                        $stmt_items->bind_param($types, ...$prescription_ids);
+                        $stmt_items->execute();
+                        $items_res = $stmt_items->get_result();
+                        while ($it = $items_res->fetch_assoc()) {
+                            $prescription_items[$it['prescription_id']][] = $it;
+                        }
+                    }
+                } catch (Exception $e) {
+                    $pres_error = "Error fetching prescriptions: " . $e->getMessage();
+                }
+
+                if (!empty($pres_error)) {
+                    echo '<div class="error-message">' . htmlspecialchars($pres_error) . '</div>';
+                }
+
+                if (!empty($prescriptions)):
+                ?>
+                <?php foreach ($prescriptions as $prescription_id => $prescription): ?>
+                    <div class="prescription-item" style="margin-bottom:1rem; padding:0.75rem; border:1px solid #eee; border-radius:8px; display:flex; flex-direction:column; gap:0.5rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <strong>Prescription by Dr. <?php echo htmlspecialchars($prescription['first_name'] . ' ' . $prescription['last_name']); ?></strong>
+                                <div style="color:var(--gray); font-size:0.9rem;"><?php echo date('M j, Y', strtotime($prescription['prescription_date'])); ?></div>
+                            </div>
+                            <div style="text-align:right; color:var(--gray);">Status: <?php echo ucfirst($prescription['status']); ?></div>
+                        </div>
+                        <?php if (!empty($prescription['instructions'])): ?>
+                            <div style="color:var(--gray);">Instructions: <?php echo htmlspecialchars($prescription['instructions']); ?></div>
+                        <?php endif; ?>
+                        <?php if (isset($prescription_items[$prescription_id])): ?>
+                            <ul style="margin-left:1rem; color:var(--dark);">
+                                <?php foreach ($prescription_items[$prescription_id] as $item): ?>
+                                    <li><?php echo htmlspecialchars($item['medication_name']) . ' - ' . htmlspecialchars($item['dosage']); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php else: ?>
+                            <div style="color:var(--gray);">No medications listed for this prescription.</div>
+                        <?php endif; ?>
+                        <div style="display:flex; gap:0.5rem;">
+                            <button class="action-btn btn-sm view-prescription" data-id="<?php echo $prescription_id; ?>">Details</button>
+                            <a href="patientprescriptions.php" class="action-btn btn-secondary btn-sm">Manage</a>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="no-records">
+                        <i class="fas fa-file-prescription"></i>
+                        <h3>No Prescriptions Found</h3>
+                        <p>You don't have any prescriptions yet.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 
     <!-- Record Detail Modal -->
