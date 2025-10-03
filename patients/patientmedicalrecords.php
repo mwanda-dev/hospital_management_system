@@ -16,16 +16,44 @@ $patient_result = $patient_stmt->get_result();
 $patient = $patient_result->fetch_assoc();
 $patient_name = $patient['first_name'] . ' ' . $patient['last_name'];
 
-// Fetch medical records from database
+// Fetch medical records from database with pagination
 $records = [];
-$stmt = $conn->prepare("
-    SELECT mr.*, d.first_name, d.last_name, d.specialization 
+
+// Pagination settings
+$records_per_page = 10; // adjust as desired
+$page = isset($_GET['page']) && is_numeric($_GET['page']) && (int)$_GET['page'] > 0 ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $records_per_page;
+
+// Get total count for this patient
+$count_stmt = $conn->prepare("SELECT COUNT(*) as total FROM medical_records WHERE patient_id = ?");
+$count_stmt->bind_param("i", $patient_id);
+$count_stmt->execute();
+$count_result = $count_stmt->get_result();
+$total_records = 0;
+if ($count_row = $count_result->fetch_assoc()) {
+    $total_records = (int)$count_row['total'];
+}
+$count_stmt->close();
+
+$total_pages = ($total_records > 0) ? (int)ceil($total_records / $records_per_page) : 1;
+
+// Ensure current page isn't out of range
+if ($page > $total_pages) {
+    $page = $total_pages;
+    $offset = ($page - 1) * $records_per_page;
+}
+
+// Use prepared statement with LIMIT and OFFSET (bind as integers)
+$stmt = $conn->prepare(
+    "SELECT mr.*, d.first_name, d.last_name, d.specialization 
     FROM medical_records mr 
     INNER JOIN users d ON mr.doctor_id = d.user_id 
     WHERE mr.patient_id = ? 
-    ORDER BY mr.record_date DESC
-");
-$stmt->bind_param("i", $patient_id);
+    ORDER BY mr.record_date DESC 
+    LIMIT ? OFFSET ?"
+);
+// bind_param requires types; 'i' for patient_id, 'i' for limit, 'i' for offset
+$stmt->bind_param("iii", $patient_id, $records_per_page, $offset);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -901,11 +929,35 @@ if (isset($_GET['get_record']) && is_numeric($_GET['get_record'])) {
                 </table>
                 
                 <div class="pagination">
-                    <a href="#" class="page-link"><i class="fas fa-chevron-left"></i></a>
-                    <a href="#" class="page-link active">1</a>
-                    <a href="#" class="page-link">2</a>
-                    <a href="#" class="page-link">3</a>
-                    <a href="#" class="page-link"><i class="fas fa-chevron-right"></i></a>
+                    <?php if ($page > 1): ?>
+                        <a class="page-link" href="?page=<?php echo $page - 1; ?>"><i class="fas fa-chevron-left"></i></a>
+                    <?php else: ?>
+                        <span class="page-link" aria-disabled="true"><i class="fas fa-chevron-left" style="opacity:0.4"></i></span>
+                    <?php endif; ?>
+
+                    <?php
+                    // Display a window of pages around current page
+                    $visible_pages = 5;
+                    $start_page = max(1, $page - floor($visible_pages / 2));
+                    $end_page = min($total_pages, $start_page + $visible_pages - 1);
+                    if ($end_page - $start_page + 1 < $visible_pages) {
+                        $start_page = max(1, $end_page - $visible_pages + 1);
+                    }
+
+                    for ($p = $start_page; $p <= $end_page; $p++):
+                    ?>
+                        <?php if ($p == $page): ?>
+                            <span class="page-link active"><?php echo $p; ?></span>
+                        <?php else: ?>
+                            <a class="page-link" href="?page=<?php echo $p; ?>"><?php echo $p; ?></a>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+
+                    <?php if ($page < $total_pages): ?>
+                        <a class="page-link" href="?page=<?php echo $page + 1; ?>"><i class="fas fa-chevron-right"></i></a>
+                    <?php else: ?>
+                        <span class="page-link" aria-disabled="true"><i class="fas fa-chevron-right" style="opacity:0.4"></i></span>
+                    <?php endif; ?>
                 </div>
                 <?php else: ?>
                 <div class="no-records">
