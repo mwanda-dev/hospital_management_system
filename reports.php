@@ -291,14 +291,14 @@ switch ($report_type) {
                                 <div class="text-sm text-gray-500"><?php echo date('g:i A', strtotime($row['start_time'])); ?></div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($row['patient_first'] . ' ' . $row['patient_last']); ?></div>
+                                <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars(($row['patient_first'] ?? '') . ' ' . ($row['patient_last'] ?? '')); ?></div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">Dr. <?php echo htmlspecialchars($row['doctor_last']); ?></div>
-                                <div class="text-sm text-gray-500"><?php echo htmlspecialchars($row['specialization']); ?></div>
+                                <div class="text-sm font-medium text-gray-900">Dr. <?php echo htmlspecialchars($row['doctor_last'] ?? ''); ?></div>
+                                <div class="text-sm text-gray-500"><?php echo htmlspecialchars($row['specialization'] ?? ''); ?></div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <?php echo htmlspecialchars($row['purpose']); ?>
+                                <?php echo htmlspecialchars($row['purpose'] ?? ''); ?>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 

@@ -181,6 +181,11 @@ if (isset($_GET['edit'])) {
 } elseif (isset($_GET['add'])) {
     $editing = true;
 }
+
+// Safe output function to prevent null values in htmlspecialchars
+function safe_html($value) {
+    return htmlspecialchars($value ?? '');
+}
 ?>
 <?php if ($editing): ?>
 <!-- User Form -->
@@ -193,25 +198,25 @@ if (isset($_GET['edit'])) {
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="username">Username</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="username" name="username" type="text" placeholder="Username" 
-                    value="<?php echo htmlspecialchars($user_data['username'] ?? ''); ?>" required>
+                    value="<?php echo safe_html($user_data['username'] ?? ''); ?>" required>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="email">Email</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="email" name="email" type="email" placeholder="Email" 
-                    value="<?php echo htmlspecialchars($user_data['email'] ?? ''); ?>" required>
+                    value="<?php echo safe_html($user_data['email'] ?? ''); ?>" required>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="first_name">First Name</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="first_name" name="first_name" type="text" placeholder="First Name" 
-                    value="<?php echo htmlspecialchars($user_data['first_name'] ?? ''); ?>" required>
+                    value="<?php echo safe_html($user_data['first_name'] ?? ''); ?>" required>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="last_name">Last Name</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="last_name" name="last_name" type="text" placeholder="Last Name" 
-                    value="<?php echo htmlspecialchars($user_data['last_name'] ?? ''); ?>" required>
+                    value="<?php echo safe_html($user_data['last_name'] ?? ''); ?>" required>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="role">Role</label>
@@ -229,19 +234,19 @@ if (isset($_GET['edit'])) {
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="specialization">Specialization</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="specialization" name="specialization" type="text" placeholder="Specialization (for doctors)" 
-                    value="<?php echo htmlspecialchars($user_data['specialization'] ?? ''); ?>">
+                    value="<?php echo safe_html($user_data['specialization'] ?? ''); ?>">
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="phone">Phone</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="phone" name="phone" type="tel" placeholder="Phone" 
-                    value="<?php echo htmlspecialchars($user_data['phone'] ?? ''); ?>">
+                    value="<?php echo safe_html($user_data['phone'] ?? ''); ?>">
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="hire_date">Hire Date</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="hire_date" name="hire_date" type="date" 
-                    value="<?php echo htmlspecialchars($user_data['hire_date'] ?? date('Y-m-d')); ?>">
+                    value="<?php echo safe_html($user_data['hire_date'] ?? date('Y-m-d')); ?>">
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="status">Status</label>
@@ -255,7 +260,7 @@ if (isset($_GET['edit'])) {
             <div class="md:col-span-2">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="address">Address</label>
                 <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                    id="address" name="address" placeholder="Address" rows="3"><?php echo htmlspecialchars($user_data['address'] ?? ''); ?></textarea>
+                    id="address" name="address" placeholder="Address" rows="3"><?php echo safe_html($user_data['address'] ?? ''); ?></textarea>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="password">Password</label>
@@ -274,7 +279,7 @@ if (isset($_GET['edit'])) {
                 Cancel
             </a>
             <?php if (isset($_GET['edit'])): ?>
-                <input type="hidden" name="user_id" value="<?php echo $user_data['user_id']; ?>">
+                <input type="hidden" name="user_id" value="<?php echo safe_html($user_data['user_id'] ?? ''); ?>">
                 <button type="submit" name="update_user" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                     Update User
                 </button>
@@ -330,8 +335,19 @@ if (isset($_GET['edit'])) {
                         case 'inactive': $status_class = 'bg-red-100 text-red-800'; break;
                         case 'on_leave': $status_class = 'bg-yellow-100 text-yellow-800'; break;
                     }
+                    
+                    // Create search data string
+                    $search_data = strtolower(
+                        ($usr['first_name'] ?? '') . ' ' . 
+                        ($usr['last_name'] ?? '') . ' ' . 
+                        ($usr['username'] ?? '') . ' ' . 
+                        ($usr['email'] ?? '') . ' ' . 
+                        ($usr['role'] ?? '') . ' ' . 
+                        ($usr['status'] ?? '') . ' ' . 
+                        'USR-' . str_pad($usr['user_id'], 4, '0', STR_PAD_LEFT)
+                    );
                 ?>
-                <tr class="hover:bg-gray-50 user-row" data-search="<?php echo htmlspecialchars(strtolower($usr['first_name'] . ' ' . $usr['last_name'] . ' ' . $usr['username'] . ' ' . $usr['email'] . ' ' . $usr['role'] . ' ' . $usr['status'] . ' USR-' . str_pad($usr['user_id'], 4, '0', STR_PAD_LEFT))); ?>">
+                <tr class="hover:bg-gray-50 user-row" data-search="<?php echo safe_html($search_data); ?>">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">USR-<?php echo str_pad($usr['user_id'], 4, '0', STR_PAD_LEFT); ?></td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
@@ -339,22 +355,22 @@ if (isset($_GET['edit'])) {
                                 <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/lego/<?php echo $usr['user_id'] % 10; ?>.jpg" alt="">
                             </div>
                             <div class="ml-4">
-                                <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($usr['first_name'] . ' ' . $usr['last_name']); ?></div>
-                                <div class="text-sm text-gray-500"><?php echo htmlspecialchars($usr['username']); ?></div>
+                                <div class="text-sm font-medium text-gray-900"><?php echo safe_html(($usr['first_name'] ?? '') . ' ' . ($usr['last_name'] ?? '')); ?></div>
+                                <div class="text-sm text-gray-500"><?php echo safe_html($usr['username'] ?? ''); ?></div>
                             </div>
                         </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900"><?php echo ucfirst($usr['role']); ?></div>
-                        <div class="text-sm text-gray-500"><?php echo htmlspecialchars($usr['specialization']); ?></div>
+                        <div class="text-sm text-gray-900"><?php echo ucfirst($usr['role'] ?? ''); ?></div>
+                        <div class="text-sm text-gray-500"><?php echo safe_html($usr['specialization'] ?? ''); ?></div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900"><?php echo htmlspecialchars($usr['email']); ?></div>
-                        <div class="text-sm text-gray-500"><?php echo htmlspecialchars($usr['phone']); ?></div>
+                        <div class="text-sm text-gray-900"><?php echo safe_html($usr['email'] ?? ''); ?></div>
+                        <div class="text-sm text-gray-500"><?php echo safe_html($usr['phone'] ?? ''); ?></div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $status_class; ?>">
-                            <?php echo ucfirst(str_replace('_', ' ', $usr['status'])); ?>
+                            <?php echo ucfirst(str_replace('_', ' ', $usr['status'] ?? '')); ?>
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">

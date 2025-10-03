@@ -1,4 +1,3 @@
- 
 <?php
 $page_title = "Appointment Management";
 require_once 'includes/header.php';
@@ -136,6 +135,14 @@ if (isset($_GET['edit'])) {
 } elseif (isset($_GET['add'])) {
     $editing = true;
 }
+
+// Helper function to safely escape values for HTML output
+function safe_html($value) {
+    if ($value === null) {
+        return '';
+    }
+    return htmlspecialchars($value);
+}
 ?>
 
 <?php if ($editing): ?>
@@ -156,7 +163,7 @@ if (isset($_GET['edit'])) {
                         $selected = (isset($appointment['patient_id']) && $appointment['patient_id'] == $patient['patient_id']) ? 'selected' : '';
                     ?>
                     <option value="<?php echo $patient['patient_id']; ?>" <?php echo $selected; ?>>
-                        <?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?>
+                        <?php echo safe_html($patient['first_name'] . ' ' . $patient['last_name']); ?>
                     </option>
                     <?php endwhile; ?>
                 </select>
@@ -172,7 +179,7 @@ if (isset($_GET['edit'])) {
                         $selected = (isset($appointment['doctor_id']) && $appointment['doctor_id'] == $doctor['user_id']) ? 'selected' : '';
                     ?>
                     <option value="<?php echo $doctor['user_id']; ?>" <?php echo $selected; ?>>
-                        Dr. <?php echo htmlspecialchars($doctor['last_name']); ?> (<?php echo htmlspecialchars($doctor['specialization']); ?>)
+                        Dr. <?php echo safe_html($doctor['last_name']); ?> (<?php echo safe_html($doctor['specialization']); ?>)
                     </option>
                     <?php endwhile; ?>
                 </select>
@@ -181,25 +188,25 @@ if (isset($_GET['edit'])) {
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="appointment_date">Date</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="appointment_date" name="appointment_date" type="date" 
-                    value="<?php echo htmlspecialchars($appointment['appointment_date'] ?? date('Y-m-d')); ?>" required>
+                    value="<?php echo safe_html($appointment['appointment_date'] ?? date('Y-m-d')); ?>" required>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="start_time">Start Time</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="start_time" name="start_time" type="time" 
-                    value="<?php echo htmlspecialchars($appointment['start_time'] ?? '09:00'); ?>" required>
+                    value="<?php echo safe_html($appointment['start_time'] ?? '09:00'); ?>" required>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="end_time">End Time</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="end_time" name="end_time" type="time" 
-                    value="<?php echo htmlspecialchars($appointment['end_time'] ?? '09:30'); ?>" required>
+                    value="<?php echo safe_html($appointment['end_time'] ?? '09:30'); ?>" required>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="purpose">Purpose</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="purpose" name="purpose" type="text" placeholder="Purpose of appointment" 
-                    value="<?php echo htmlspecialchars($appointment['purpose'] ?? ''); ?>" required>
+                    value="<?php echo safe_html($appointment['purpose'] ?? ''); ?>" required>
             </div>
             <?php if (isset($_GET['edit'])): ?>
             <div>
@@ -216,7 +223,7 @@ if (isset($_GET['edit'])) {
             <div class="md:col-span-2">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="notes">Notes</label>
                 <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                    id="notes" name="notes" placeholder="Additional notes"><?php echo htmlspecialchars($appointment['notes'] ?? ''); ?></textarea>
+                    id="notes" name="notes" placeholder="Additional notes"><?php echo safe_html($appointment['notes'] ?? ''); ?></textarea>
             </div>
         </div>
         
@@ -225,7 +232,7 @@ if (isset($_GET['edit'])) {
                 Cancel
             </a>
             <?php if (isset($_GET['edit'])): ?>
-                <input type="hidden" name="appointment_id" value="<?php echo $appointment['appointment_id']; ?>">
+                <input type="hidden" name="appointment_id" value="<?php echo safe_html($appointment['appointment_id'] ?? ''); ?>">
                 <button type="submit" name="update_appointment" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                     Update Appointment
                 </button>
@@ -292,13 +299,13 @@ if (isset($_GET['edit'])) {
                         <div class="text-sm text-gray-500"><?php echo $time; ?></div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($appt['patient_first'] . ' ' . $appt['patient_last']); ?></div>
+                        <div class="text-sm font-medium text-gray-900"><?php echo safe_html($appt['patient_first'] . ' ' . $appt['patient_last']); ?></div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900">Dr. <?php echo htmlspecialchars($appt['doctor_last']); ?></div>
-                        <div class="text-sm text-gray-500"><?php echo htmlspecialchars($appt['specialization']); ?></div>
+                        <div class="text-sm font-medium text-gray-900">Dr. <?php echo safe_html($appt['doctor_last']); ?></div>
+                        <div class="text-sm text-gray-500"><?php echo safe_html($appt['specialization']); ?></div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo htmlspecialchars($appt['purpose']); ?></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo safe_html($appt['purpose']); ?></td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $status_class; ?>">
                             <?php echo ucfirst(str_replace('_', ' ', $appt['status'])); ?>

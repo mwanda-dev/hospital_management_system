@@ -285,11 +285,11 @@ function formatSystemDate($dateString, $includeTime = false) {
     <div class="flex items-center space-x-4">
         <img src="https://randomuser.me/api/portraits/lego/<?php echo $patient['patient_id'] % 10; ?>.jpg" alt="Patient" class="w-16 h-16 rounded-full">
         <div>
-            <h3 class="text-xl font-bold"><?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?></h3>
+            <h3 class="text-xl font-bold"><?php echo htmlspecialchars(($patient['first_name'] ?? '') . ' ' . ($patient['last_name'] ?? '')); ?></h3>
             <div class="flex space-x-4 text-sm text-gray-600">
                 <div>ID: PAT-<?php echo str_pad($patient['patient_id'], 4, '0', STR_PAD_LEFT); ?></div>
                 <div>Age: <?php echo date_diff(date_create($patient['date_of_birth']), date_create('today'))->y; ?></div>
-                <div>Gender: <?php echo ucfirst($patient['gender']); ?></div>
+                <div>Gender: <?php echo ucfirst($patient['gender'] ?? ''); ?></div>
                 <div>Blood Type: <?php echo $patient['blood_type'] ?? 'N/A'; ?></div>
             </div>
         </div>
@@ -690,8 +690,8 @@ function formatSystemDate($dateString, $includeTime = false) {
                                 <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/lego/<?php echo $patient['patient_id'] % 10; ?>.jpg" alt="">
                             </div>
                             <div class="ml-4">
-                                <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?></div>
-                                <div class="text-sm text-gray-500"><?php echo htmlspecialchars($patient['email']); ?></div>
+                                <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars(($patient['first_name'] ?? '') . ' ' . ($patient['last_name'] ?? '')); ?></div>
+                                <div class="text-sm text-gray-500"><?php echo htmlspecialchars($patient['email'] ?? ''); ?></div>
                             </div>
                         </div>
                     </td>

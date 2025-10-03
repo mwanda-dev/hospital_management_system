@@ -160,6 +160,14 @@ if (isset($_GET['edit'])) {
 } elseif (isset($_GET['add'])) {
     $editing = true;
 }
+
+// Helper function to safely escape values for htmlspecialchars
+function safe_htmlspecialchars($value) {
+    if ($value === null) {
+        return '';
+    }
+    return htmlspecialchars($value);
+}
 ?>
 
 <?php if ($editing): ?>
@@ -173,19 +181,19 @@ if (isset($_GET['edit'])) {
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="first_name">First Name</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="first_name" name="first_name" type="text" placeholder="First Name" 
-                    value="<?php echo htmlspecialchars($patient['first_name'] ?? ''); ?>" required>
+                    value="<?php echo safe_htmlspecialchars($patient['first_name'] ?? ''); ?>" required>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="last_name">Last Name</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="last_name" name="last_name" type="text" placeholder="Last Name" 
-                    value="<?php echo htmlspecialchars($patient['last_name'] ?? ''); ?>" required>
+                    value="<?php echo safe_htmlspecialchars($patient['last_name'] ?? ''); ?>" required>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="date_of_birth">Date of Birth</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="date_of_birth" name="date_of_birth" type="date" 
-                    value="<?php echo htmlspecialchars($patient['date_of_birth'] ?? ''); ?>" required>
+                    value="<?php echo safe_htmlspecialchars($patient['date_of_birth'] ?? ''); ?>" required>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="gender">Gender</label>
@@ -200,57 +208,57 @@ if (isset($_GET['edit'])) {
                 <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="blood_type" name="blood_type">
                     <option value="">Select Blood Type</option>
-                    <option value="Unknown" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'Unknown' ? 'selected' : ''; ?>>Unknown</option>
-                    <option value="A+" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'A+' ? 'selected' : ''; ?>>A+</option>
-                    <option value="A-" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'A-' ? 'selected' : ''; ?>>A-</option>
-                    <option value="B+" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'B+' ? 'selected' : ''; ?>>B+</option>
-                    <option value="B-" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'B-' ? 'selected' : ''; ?>>B-</option>
-                    <option value="AB+" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'AB+' ? 'selected' : ''; ?>>AB+</option>
-                    <option value="AB-" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'AB-' ? 'selected' : ''; ?>>AB-</option>
-                    <option value="O+" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'O+' ? 'selected' : ''; ?>>O+</option>
-                    <option value="O-" <?php echo (isset($patient['blood_type'])) && $patient['blood_type'] == 'O-' ? 'selected' : ''; ?>>O-</option>
+                    <option value="Unknown" <?php echo (isset($patient['blood_type']) && $patient['blood_type'] == 'Unknown') ? 'selected' : ''; ?>>Unknown</option>
+                    <option value="A+" <?php echo (isset($patient['blood_type']) && $patient['blood_type'] == 'A+') ? 'selected' : ''; ?>>A+</option>
+                    <option value="A-" <?php echo (isset($patient['blood_type']) && $patient['blood_type'] == 'A-') ? 'selected' : ''; ?>>A-</option>
+                    <option value="B+" <?php echo (isset($patient['blood_type']) && $patient['blood_type'] == 'B+') ? 'selected' : ''; ?>>B+</option>
+                    <option value="B-" <?php echo (isset($patient['blood_type']) && $patient['blood_type'] == 'B-') ? 'selected' : ''; ?>>B-</option>
+                    <option value="AB+" <?php echo (isset($patient['blood_type']) && $patient['blood_type'] == 'AB+') ? 'selected' : ''; ?>>AB+</option>
+                    <option value="AB-" <?php echo (isset($patient['blood_type']) && $patient['blood_type'] == 'AB-') ? 'selected' : ''; ?>>AB-</option>
+                    <option value="O+" <?php echo (isset($patient['blood_type']) && $patient['blood_type'] == 'O+') ? 'selected' : ''; ?>>O+</option>
+                    <option value="O-" <?php echo (isset($patient['blood_type']) && $patient['blood_type'] == 'O-') ? 'selected' : ''; ?>>O-</option>
                 </select>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="phone">Phone</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="phone" name="phone" type="tel" placeholder="Phone" 
-                    value="<?php echo htmlspecialchars($patient['phone'] ?? ''); ?>" required>
+                    value="<?php echo safe_htmlspecialchars($patient['phone'] ?? ''); ?>" required>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="email">Email</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="email" name="email" type="email" placeholder="Email" 
-                    value="<?php echo htmlspecialchars($patient['email'] ?? ''); ?>">
+                    value="<?php echo safe_htmlspecialchars($patient['email'] ?? ''); ?>">
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="address">Address</label>
                 <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                    id="address" name="address" placeholder="Address"><?php echo htmlspecialchars($patient['address'] ?? ''); ?></textarea>
+                    id="address" name="address" placeholder="Address"><?php echo safe_htmlspecialchars($patient['address'] ?? ''); ?></textarea>
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="emergency_contact_name">Emergency Contact Name</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="emergency_contact_name" name="emergency_contact_name" type="text" placeholder="Emergency Contact Name" 
-                    value="<?php echo htmlspecialchars($patient['emergency_contact_name'] ?? ''); ?>">
+                    value="<?php echo safe_htmlspecialchars($patient['emergency_contact_name'] ?? ''); ?>">
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="emergency_contact_phone">Emergency Contact Phone</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="emergency_contact_phone" name="emergency_contact_phone" type="tel" placeholder="Emergency Contact Phone" 
-                    value="<?php echo htmlspecialchars($patient['emergency_contact_phone'] ?? ''); ?>">
+                    value="<?php echo safe_htmlspecialchars($patient['emergency_contact_phone'] ?? ''); ?>">
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="insurance_provider">Insurance Provider</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="insurance_provider" name="insurance_provider" type="text" placeholder="Insurance Provider" 
-                    value="<?php echo htmlspecialchars($patient['insurance_provider'] ?? ''); ?>">
+                    value="<?php echo safe_htmlspecialchars($patient['insurance_provider'] ?? ''); ?>">
             </div>
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="insurance_policy_number">Insurance Policy Number</label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
                     id="insurance_policy_number" name="insurance_policy_number" type="text" placeholder="Insurance Policy Number" 
-                    value="<?php echo htmlspecialchars($patient['insurance_policy_number'] ?? ''); ?>">
+                    value="<?php echo safe_htmlspecialchars($patient['insurance_policy_number'] ?? ''); ?>">
             </div>
         </div>
         
@@ -326,7 +334,7 @@ if (isset($_GET['edit'])) {
                     $age = date_diff(date_create($patient['date_of_birth']), date_create('today'))->y;
                     $reg_date = formatSystemDate($patient['registration_date']);
                 ?>
-                <tr class="hover:bg-gray-50 patient-row" data-search="<?php echo htmlspecialchars(strtolower($patient['first_name'] . ' ' . $patient['last_name'] . ' ' . $patient['phone'] . ' ' . $patient['email'] . ' PAT-' . str_pad($patient['patient_id'], 4, '0', STR_PAD_LEFT))); ?>">
+                <tr class="hover:bg-gray-50 patient-row" data-search="<?php echo safe_htmlspecialchars(strtolower($patient['first_name'] . ' ' . $patient['last_name'] . ' ' . $patient['phone'] . ' ' . $patient['email'] . ' PAT-' . str_pad($patient['patient_id'], 4, '0', STR_PAD_LEFT))); ?>">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">PAT-<?php echo str_pad($patient['patient_id'], 4, '0', STR_PAD_LEFT); ?></td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
@@ -334,14 +342,14 @@ if (isset($_GET['edit'])) {
                                 <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/lego/<?php echo $patient['patient_id'] % 10; ?>.jpg" alt="">
                             </div>
                             <div class="ml-4">
-                                <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?></div>
-                                <div class="text-sm text-gray-500"><?php echo htmlspecialchars($patient['email']); ?></div>
+                                <div class="text-sm font-medium text-gray-900"><?php echo safe_htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?></div>
+                                <div class="text-sm text-gray-500"><?php echo safe_htmlspecialchars($patient['email']); ?></div>
                             </div>
                         </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo $age; ?></td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo ucfirst($patient['gender']); ?></td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo htmlspecialchars($patient['phone']); ?></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo safe_htmlspecialchars($patient['phone']); ?></td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?php echo $reg_date; ?></td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div class="flex space-x-2">
