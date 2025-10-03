@@ -723,6 +723,9 @@ if (isset($_GET['logout'])) {
             </div>
             
             <div class="payment-methods">
+                <div style="margin-bottom:12px; padding:12px; border:1px dashed #e5e7eb; border-radius:8px; background:#fff8f0; color:#92400e;">
+                    <strong>Note:</strong> Only the <em>Insurance</em> payment method is implemented right now. Other online payment methods are not available. All cash payments must be made at the hospital cashier.
+                </div>
                 <?php
                 // Display only the allowed payment methods
                 foreach ($allowed_payment_methods as $method):
@@ -767,7 +770,7 @@ if (isset($_GET['logout'])) {
                         <?php if ($method === 'insurance'): ?>
                             <button class="btn btn-outline select-insurance">Select</button>
                         <?php else: ?>
-                            <button class="btn btn-outline">Select</button>
+                            <button class="btn btn-outline select-method" data-method="<?php echo $method; ?>">Select</button>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -937,7 +940,21 @@ if (isset($_GET['logout'])) {
 
             // Use Insurance buttons
             // Insurance modal handlers (opened from Payment Methods card)
+            // Expose patient insurance details to JS
+            const PATIENT_INSURANCE = {
+                provider: <?php echo json_encode($patient['insurance_provider'] ?? ''); ?>,
+                policy: <?php echo json_encode($patient['insurance_policy_number'] ?? ''); ?>
+            };
+
             const selectInsuranceBtn = document.querySelector('.select-insurance');
+            // Non-insurance methods handler
+            const selectMethodBtns = document.querySelectorAll('.select-method');
+            selectMethodBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Inform user these methods aren't implemented yet and cash at hospital
+                    alert('This payment method is not implemented yet. All cash payments must be made at the hospital cashier.');
+                });
+            });
             const insuranceModal = document.getElementById('insuranceModal');
             const closeInsuranceModal = document.getElementById('closeInsuranceModal');
             const insuranceInvoiceList = document.getElementById('insuranceInvoiceList');
@@ -1015,6 +1032,12 @@ if (isset($_GET['logout'])) {
 
             if (selectInsuranceBtn) {
                 selectInsuranceBtn.addEventListener('click', function() {
+                    // If patient has no insurance details, show message
+                    if (!PATIENT_INSURANCE.provider || !PATIENT_INSURANCE.policy) {
+                        alert("You're not insured. Please update your insurance details in your profile before billing to insurance.");
+                        return;
+                    }
+
                     renderUnpaidInvoices();
                     insuranceModal.style.display = 'flex';
                 });
