@@ -790,10 +790,10 @@ if (isset($_GET['logout'])) {
     </div>
     </div>
 
-    <!-- View Bill Modal (to be implemented) -->
-    <div id="billModal" style="display: none;">
-        <div class="modal-content">
-            <h2>Invoice Details</h2>
+    <!-- View Bill Modal -->
+    <div id="billModal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:1000;">
+        <div id="billModalContent" style="background:white; width:95%; max-width:900px; margin:40px auto; border-radius:8px; padding:1rem; max-height:90vh; overflow:auto; position:relative;">
+            <button id="closeBillModal" class="btn" aria-label="Close invoice" title="Close" style="position:absolute; right:12px; top:12px; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; line-height:1; padding:0; border:1px solid #e5e7eb; background:white; box-shadow:0 2px 6px rgba(0,0,0,0.08);">&times;</button>
             <div id="billDetails"></div>
         </div>
     </div>
@@ -834,14 +834,96 @@ if (isset($_GET['logout'])) {
                 alert('Filter functionality would be implemented here. Currently showing all bills.');
             }
             
-            // View bill buttons
+            // View bill buttons - fetch invoice via AJAX and show modal
             const viewButtons = document.querySelectorAll('.view-bill');
+            const billModal = document.getElementById('billModal');
+            const billDetails = document.getElementById('billDetails');
+            const closeBillModal = document.getElementById('closeBillModal');
+
+            function renderInvoice(invoice, items) {
+                const pending = (Number(invoice.total_amount) - Number(invoice.paid_amount)).toFixed(2);
+                let html = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <div>
+                            <h3 style="margin:0">Invoice #INV-${String(invoice.invoice_id).padStart(5,'0')}</h3>
+                            <p style="margin:0;color:#666">Date: ${new Date(invoice.invoice_date).toLocaleDateString()} | Due: ${new Date(invoice.due_date).toLocaleDateString()}</p>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <!-- Print & Download buttons removed per request -->
+                        </div>
+                    </div>
+                    <div style="margin-bottom:12px; display:flex; gap:24px; align-items:center;">
+                        <div><strong>Amount:</strong> $${Number(invoice.total_amount).toFixed(2)}</div>
+                        <div><strong>Paid:</strong> $${Number(invoice.paid_amount).toFixed(2)}</div>
+                        <div><strong>Pending:</strong> $${pending}</div>
+                        <div><strong>Status:</strong> ${invoice.status}</div>
+                    </div>
+                    <div style="margin-bottom:12px;"><strong>Notes:</strong><div style="color:#444;">${invoice.notes ? invoice.notes.replace(/\n/g,'<br>') : '—'}</div></div>
+                    <h4>Items</h4>
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:12px;">
+                        <thead><tr><th style="padding:8px;border:1px solid #eee; text-align:left">Description</th><th style="padding:8px;border:1px solid #eee; width:80px">Qty</th><th style="padding:8px;border:1px solid #eee; width:120px">Unit Price</th><th style="padding:8px;border:1px solid #eee; width:120px">Line Total</th></tr></thead>
+                        <tbody>
+                `;
+                if (items && items.length > 0) {
+                    items.forEach(it => {
+                        const line = (Number(it.quantity) * Number(it.unit_price)).toFixed(2);
+                        html += `<tr><td style="padding:8px;border:1px solid #eee">${it.description}</td><td style="padding:8px;border:1px solid #eee">${it.quantity}</td><td style="padding:8px;border:1px solid #eee">$${Number(it.unit_price).toFixed(2)}</td><td style="padding:8px;border:1px solid #eee">$${line}</td></tr>`;
+                    });
+                } else {
+                    // If no items table, try to show notes only
+                    html += `<tr><td colspan="4" style="padding:8px;border:1px solid #eee">No itemized entries found.</td></tr>`;
+                }
+                html += `</tbody></table>`;
+
+                billDetails.innerHTML = html;
+
+                // Print & Download handlers removed per request
+            }
+
             viewButtons.forEach(button => {
                 button.addEventListener('click', function() {
                     const billId = this.getAttribute('data-id');
-                    alert('Viewing details for invoice ID: ' + billId + '\nThis would show a modal with full invoice details.');
+                    // fetch invoice
+                    fetch(`../ajax/get_invoice.php?invoice_id=${encodeURIComponent(billId)}`, { credentials: 'same-origin' })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (!data.success) {
+                                alert('Error: ' + (data.message || 'Failed to fetch invoice'));
+                                return;
+                            }
+                            renderInvoice(data.invoice, data.items || []);
+                            billModal.style.display = 'flex';
+                            // scroll modal to top
+                            document.getElementById('billModalContent').scrollTop = 0;
+                        })
+                        .catch(err => { console.error(err); alert('Unexpected error fetching invoice'); });
                 });
             });
+
+            if (closeBillModal) {
+                const closeModal = function() {
+                    billModal.style.display = 'none';
+                    // remove escape listener when closed
+                    document.removeEventListener('keydown', escHandler);
+                };
+
+                closeBillModal.addEventListener('click', closeModal);
+
+                // Close when clicking outside modal content
+                billModal.addEventListener('click', function(e) {
+                    if (e.target === billModal) {
+                        closeModal();
+                    }
+                });
+
+                // Close on ESC
+                const escHandler = function(e) {
+                    if (e.key === 'Escape' || e.key === 'Esc') {
+                        closeModal();
+                    }
+                };
+                document.addEventListener('keydown', escHandler);
+            }
             
             // Pay bill buttons
             const payButtons = document.querySelectorAll('.pay-bill');
