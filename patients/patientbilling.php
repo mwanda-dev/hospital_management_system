@@ -597,11 +597,12 @@ if (isset($_GET['logout'])) {
     <div class="container main-content">
         <div class="page-header">
             <h1 class="page-title">Billing & Payments</h1>
-            <button class="btn btn-primary"><i class="fas fa-download"></i> Download Statements</button>
+            <button id="downloadStatementsBtn" class="btn btn-primary"><i class="fas fa-download"></i> Download Statements</button>
         
                 <script>
-                    // Expose billing data to JS for the insurance modal
+                    // Expose billing data to JS for the insurance modal and other actions
                     const BILLING_DATA = <?php echo json_encode($billing_data); ?>;
+                    const PATIENT_NAME = <?php echo json_encode($patient_name); ?>;
                 </script>
         </div>
         
@@ -663,7 +664,7 @@ if (isset($_GET['logout'])) {
                     <option value="all">All Time</option>
                 </select>
             </div>
-            <button class="btn btn-outline"><i class="fas fa-print"></i> Print Statements</button>
+            <button id="printStatementsBtn" class="btn btn-outline"><i class="fas fa-print"></i> Print Statements</button>
         </div>
         
         <div class="card">
@@ -719,7 +720,6 @@ if (isset($_GET['logout'])) {
         <div class="card">
             <div class="card-header">
                 <h3>Payment Methods</h3>
-                <button class="btn btn-primary"><i class="fas fa-plus"></i> Add Payment Method</button>
             </div>
             
             <div class="payment-methods">
@@ -941,6 +941,70 @@ if (isset($_GET['logout'])) {
             if (closeInsuranceModal) {
                 closeInsuranceModal.addEventListener('click', function() {
                     insuranceModal.style.display = 'none';
+                });
+            }
+
+            // Download Statements (CSV)
+            const downloadBtn = document.getElementById('downloadStatementsBtn');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', function() {
+                    if (!BILLING_DATA || BILLING_DATA.length === 0) {
+                        alert('No billing data available to download.');
+                        return;
+                    }
+
+                    // Build CSV
+                    const headers = ['Invoice #', 'Invoice Date', 'Due Date', 'Service', 'Total Amount', 'Paid Amount', 'Status'];
+                    const rows = BILLING_DATA.map(b => [
+                        `INV-${String(b.invoice_id).padStart(5,'0')}`,
+                        new Date(b.invoice_date).toLocaleDateString(),
+                        new Date(b.due_date).toLocaleDateString(),
+                        (b.notes || 'Medical Services').replace(/\r?\n|,/g, ' '),
+                        Number(b.total_amount).toFixed(2),
+                        Number(b.paid_amount).toFixed(2),
+                        b.status
+                    ]);
+
+                    const csvContent = [headers, ...rows].map(r => r.map(field => `"${String(field).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const filename = `billing_statements_${PATIENT_NAME.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+            }
+
+            // Print Statements - open a printable view in a new window
+            const printBtn = document.getElementById('printStatementsBtn');
+            if (printBtn) {
+                printBtn.addEventListener('click', function() {
+                    const bills = BILLING_DATA || [];
+                    let printable = `<!doctype html><html><head><meta charset="utf-8"><title>Printable Billing Statements</title><style>body{font-family:Arial,Helvetica,sans-serif;margin:20px;color:#222}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd;text-align:left}th{background:#f7f7f7}</style></head><body>`;
+                    printable += `<h2>Billing Statements for ${PATIENT_NAME}</h2>`;
+                    printable += `<p>Generated: ${new Date().toLocaleString()}</p>`;
+                    if (bills.length === 0) {
+                        printable += '<p>No billing records found.</p>';
+                    } else {
+                        printable += '<table><thead><tr><th>Invoice #</th><th>Date</th><th>Due Date</th><th>Service</th><th>Amount</th><th>Paid</th><th>Status</th></tr></thead><tbody>';
+                        bills.forEach(b => {
+                            printable += `<tr><td>INV-${String(b.invoice_id).padStart(5,'0')}</td><td>${new Date(b.invoice_date).toLocaleDateString()}</td><td>${new Date(b.due_date).toLocaleDateString()}</td><td>${(b.notes||'Medical Services')}</td><td>$${Number(b.total_amount).toFixed(2)}</td><td>$${Number(b.paid_amount).toFixed(2)}</td><td>${b.status}</td></tr>`;
+                        });
+                        printable += '</tbody></table>';
+                    }
+                    printable += '</body></html>';
+
+                    const w = window.open('', '_blank');
+                    if (!w) { alert('Popup blocked. Please allow popups for this site to use the printable view.'); return; }
+                    w.document.open();
+                    w.document.write(printable);
+                    w.document.close();
+                    // Give the new window a moment to render before printing
+                    setTimeout(() => { w.print(); }, 500);
                 });
             }
         });
