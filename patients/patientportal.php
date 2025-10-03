@@ -512,7 +512,10 @@ $prescriptions_result = $prescriptions_stmt->get_result();
                         <p>Welcome, <strong><?php echo htmlspecialchars($patient_name); ?></strong></p>
                     </div>
                     <div class="dropdown">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User Profile" onclick="toggleDropdown()">
+                        <?php
+                        $avatar_url = isset($patient_id) ? 'https://randomuser.me/api/portraits/lego/' . ($patient_id % 10) . '.jpg' : 'https://randomuser.me/api/portraits/lego/0.jpg';
+                        ?>
+                        <img src="<?php echo $avatar_url; ?>" alt="User Profile" onclick="toggleDropdown()">
                         <div id="userDropdown" class="dropdown-content">
                             <a href="patientprofile.php"><i class="fas fa-user"></i> Profile</a>
                             <a href="../includes/logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>

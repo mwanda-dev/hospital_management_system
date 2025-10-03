@@ -507,7 +507,11 @@ if (isset($_GET['logout'])) {
                         <p>Welcome, <strong><?php echo htmlspecialchars($patient_name); ?></strong></p>
                     </div>
                     <div class="dropdown">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User Profile" id="profileImg">
+                        <?php
+                        // Compute avatar URL from patient ID (matching patients.php pattern). Fallback to a generic avatar if missing.
+                        $avatar_url = isset($patient_id) ? 'https://randomuser.me/api/portraits/lego/' . ($patient_id % 10) . '.jpg' : 'https://randomuser.me/api/portraits/lego/0.jpg';
+                        ?>
+                        <img src="<?php echo $avatar_url; ?>" alt="User Profile" id="profileImg">
                         <div id="userDropdown" class="dropdown-content">
                             <a href="patientprofile.php"><i class="fas fa-user"></i> Profile</a>
                             <a href="../includes/logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>

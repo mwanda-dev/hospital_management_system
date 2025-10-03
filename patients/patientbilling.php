@@ -571,7 +571,12 @@ if (isset($_GET['logout'])) {
                         <p>Welcome, <strong><?php echo htmlspecialchars($patient_info['first_name'] . ' ' . $patient_info['last_name']); ?></strong></p>
                     </div>
                     <div class="dropdown">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User Profile" id="profileDropdownToggle">
+                        <?php
+                        // Prefer $patient_id when available, otherwise try to infer from $patient_info
+                        $use_id = isset($patient_id) ? $patient_id : (isset($patient_info['patient_id']) ? $patient_info['patient_id'] : null);
+                        $avatar_url = $use_id ? 'https://randomuser.me/api/portraits/lego/' . ($use_id % 10) . '.jpg' : 'https://randomuser.me/api/portraits/lego/0.jpg';
+                        ?>
+                        <img src="<?php echo $avatar_url; ?>" alt="User Profile" id="profileDropdownToggle">
                         <div id="userDropdown" class="dropdown-content">
                             <a href="patientprofile.php"><i class="fas fa-user"></i> Profile</a>
                             <a href="../includes/logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>

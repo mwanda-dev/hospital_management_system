@@ -596,10 +596,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
                 </div>
                 <div class="user-info">
                     <div class="user-details">
-                        <p>Welcome, <strong><?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?></strong></p>
+                        <p>Welcome, <strong><?php echo htmlspecialchars(($patient['first_name'] ?? '') . ' ' . ($patient['last_name'] ?? '')); ?></strong></p>
                     </div>
                     <div class="dropdown">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User Profile" onclick="toggleDropdown()">
+                        <?php $avatar_url = isset($patient['patient_id']) ? 'https://randomuser.me/api/portraits/lego/' . ($patient['patient_id'] % 10) . '.jpg' : 'https://randomuser.me/api/portraits/lego/0.jpg'; ?>
+                        <img src="<?php echo $avatar_url; ?>" alt="User Profile" onclick="toggleDropdown()">
                         <div id="userDropdown" class="dropdown-content">
                             <a href="patientprofile.php"><i class="fas fa-user"></i> Profile</a>
                             <a href="../includes/logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
@@ -645,9 +646,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
                 <div class="card">
                     <div class="profile-summary">
                         <div class="profile-avatar" style="overflow: hidden; width: 120px; height: 120px; border-radius: 50%;">
-                            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                            <img src="<?php echo $avatar_url; ?>" alt="User Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                         </div>
-                        <h2 class="profile-name"><?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?></h2>
+                        <h2 class="profile-name"><?php echo htmlspecialchars(($patient['first_name'] ?? '') . ' ' . ($patient['last_name'] ?? '')); ?></h2>
                         <p class="profile-role">Patient since <?php echo date('Y', strtotime($patient['registration_date'])); ?></p>
                     </div>
                     
@@ -674,9 +675,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
                             <i class="fas fa-user"></i>
                         </div>
                         <div class="emergency-info">
-                            <h4><?php echo htmlspecialchars($patient['emergency_contact_name']); ?></h4>
+                            <h4><?php echo htmlspecialchars($patient['emergency_contact_name'] ?? ''); ?></h4>
                             <p>Emergency Contact</p>
-                            <p><i class="fas fa-phone"></i> <?php echo htmlspecialchars($patient['emergency_contact_phone']); ?></p>
+                            <p><i class="fas fa-phone"></i> <?php echo htmlspecialchars($patient['emergency_contact_phone'] ?? ''); ?></p>
                         </div>
                     </div>
                 </div>
@@ -703,12 +704,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
                                 <div class="form-grid">
                                     <div class="form-group">
                                         <label class="form-label">First Name</label>
-                                        <input type="text" class="form-control" name="first_name" value="<?php echo htmlspecialchars($patient['first_name']); ?>" readonly>
+                                        <input type="text" class="form-control" name="first_name" value="<?php echo htmlspecialchars($patient['first_name'] ?? ''); ?>" readonly>
                                     </div>
                                     
                                     <div class="form-group">
                                         <label class="form-label">Last Name</label>
-                                        <input type="text" class="form-control" name="last_name" value="<?php echo htmlspecialchars($patient['last_name']); ?>" readonly>
+                                        <input type="text" class="form-control" name="last_name" value="<?php echo htmlspecialchars($patient['last_name'] ?? ''); ?>" readonly>
                                     </div>
                                 </div>
                                 
@@ -728,17 +729,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
                                 
                                 <div class="form-group">
                                     <label class="form-label">Email Address</label>
-                                    <input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($patient['email']); ?>" readonly>
+                                    <input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($patient['email'] ?? ''); ?>" readonly>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label class="form-label">Phone Number</label>
-                                    <input type="tel" class="form-control" name="phone" value="<?php echo htmlspecialchars($patient['phone']); ?>" readonly>
+                                    <input type="tel" class="form-control" name="phone" value="<?php echo htmlspecialchars($patient['phone'] ?? ''); ?>" readonly>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label class="form-label">Address</label>
-                                    <textarea class="form-control" name="address" readonly><?php echo htmlspecialchars($patient['address']); ?></textarea>
+                                    <textarea class="form-control" name="address" readonly><?php echo htmlspecialchars($patient['address'] ?? ''); ?></textarea>
                                 </div>
                                 
                                 <div class="card-header" style="margin-top: 2rem;">
@@ -747,12 +748,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
                                 
                                 <div class="form-group">
                                     <label class="form-label">Emergency Contact Name</label>
-                                    <input type="text" class="form-control" name="emergency_contact_name" value="<?php echo htmlspecialchars($patient['emergency_contact_name']); ?>" readonly>
+                                    <input type="text" class="form-control" name="emergency_contact_name" value="<?php echo htmlspecialchars($patient['emergency_contact_name'] ?? ''); ?>" readonly>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label class="form-label">Emergency Contact Phone</label>
-                                    <input type="text" class="form-control" name="emergency_contact_phone" value="<?php echo htmlspecialchars($patient['emergency_contact_phone']); ?>" readonly>
+                                    <input type="text" class="form-control" name="emergency_contact_phone" value="<?php echo htmlspecialchars($patient['emergency_contact_phone'] ?? ''); ?>" readonly>
                                 </div>
                                 
                                 <div class="card-header" style="margin-top: 2rem;">
@@ -761,12 +762,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
                                 
                                 <div class="form-group">
                                     <label class="form-label">Insurance Provider</label>
-                                    <input type="text" class="form-control" name="insurance_provider" value="<?php echo htmlspecialchars($patient['insurance_provider']); ?>" readonly>
+                                    <input type="text" class="form-control" name="insurance_provider" value="<?php echo htmlspecialchars($patient['insurance_provider'] ?? ''); ?>" readonly>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label class="form-label">Insurance Policy Number</label>
-                                    <input type="text" class="form-control" name="insurance_policy_number" value="<?php echo htmlspecialchars($patient['insurance_policy_number']); ?>" readonly>
+                                    <input type="text" class="form-control" name="insurance_policy_number" value="<?php echo htmlspecialchars($patient['insurance_policy_number'] ?? ''); ?>" readonly>
                                 </div>
                             </form>
                         </div>
