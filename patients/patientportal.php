@@ -726,7 +726,7 @@ $prescriptions_result = $prescriptions_stmt->get_result();
                     </div>
                     <div style="display: grid; gap: 0.75rem;">
                         <a href="patientappointments.php" class="action-btn" style="text-align: center;"><i class="fas fa-plus-circle"></i> Schedule Appointment</a>
-                        <a href="patientmedicalrecords.php" class="action-btn" style="text-align: center; background: var(--info);"><i class="fas fa-download"></i> Download Records</a>
+                        <a href="patientmedicalrecords.php" class="action-btn" style="text-align: center; background: var(--info);"><i class="fas fa-print"></i> Print Records</a>
                     </div>
                 </div>
             </div>

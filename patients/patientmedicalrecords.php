@@ -869,7 +869,7 @@ if (isset($_GET['get_record']) && is_numeric($_GET['get_record'])) {
     <div class="container main-content">
         <div class="page-header">
             <h2 class="page-title">Medical Records</h2>
-            <button class="action-btn" onclick="downloadAllRecords()"><i class="fas fa-download"></i> Download All Records</button>
+            <button class="action-btn" onclick="printAllRecords()"><i class="fas fa-print"></i> Print All Records</button>
         </div>
         
         <div class="tabs">
@@ -918,9 +918,9 @@ if (isset($_GET['get_record']) && is_numeric($_GET['get_record'])) {
                                     <button class="action-btn btn-sm view-record" data-id="<?php echo $record['record_id']; ?>">
                                         <i class="fas fa-eye"></i> View
                                     </button>
-                                    <a href="?download=<?php echo $record['record_id']; ?>" class="action-btn btn-secondary btn-sm">
-                                        <i class="fas fa-download"></i> Download
-                                    </a>
+                                    <button class="action-btn btn-secondary btn-sm print-record" data-id="<?php echo $record['record_id']; ?>">
+                                        <i class="fas fa-print"></i> Print
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -1007,9 +1007,9 @@ if (isset($_GET['get_record']) && is_numeric($_GET['get_record'])) {
                                     <button class="action-btn btn-sm view-record" data-id="<?php echo $record['record_id']; ?>">
                                         <i class="fas fa-eye"></i> View
                                     </button>
-                                    <a href="?download=<?php echo $record['record_id']; ?>" class="action-btn btn-secondary btn-sm">
-                                        <i class="fas fa-download"></i> Download
-                                    </a>
+                                    <button class="action-btn btn-secondary btn-sm print-record" data-id="<?php echo $record['record_id']; ?>">
+                                        <i class="fas fa-print"></i> Print
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -1064,9 +1064,9 @@ if (isset($_GET['get_record']) && is_numeric($_GET['get_record'])) {
                                     <button class="action-btn btn-sm view-record" data-id="<?php echo $record['record_id']; ?>">
                                         <i class="fas fa-eye"></i> View
                                     </button>
-                                    <a href="?download=<?php echo $record['record_id']; ?>" class="action-btn btn-secondary btn-sm">
-                                        <i class="fas fa-download"></i> Download
-                                    </a>
+                                    <button class="action-btn btn-secondary btn-sm print-record" data-id="<?php echo $record['record_id']; ?>">
+                                        <i class="fas fa-print"></i> Print
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -1174,8 +1174,7 @@ if (isset($_GET['get_record']) && is_numeric($_GET['get_record'])) {
             </div>
             <div class="modal-footer">
                 <button class="action-btn btn-secondary" id="closeModalBtn">Close</button>
-                <button class="action-btn" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
-                <a href="#" id="downloadModalBtn" class="action-btn btn-secondary"><i class="fas fa-download"></i> Download PDF</a>
+                <button class="action-btn" id="printModalBtn"><i class="fas fa-print"></i> Print</button>
             </div>
         </div>
     </div>
@@ -1199,18 +1198,27 @@ if (isset($_GET['get_record']) && is_numeric($_GET['get_record'])) {
             });
         });
         
-        // Modal functionality
+    // Modal functionality
         const modal = document.getElementById('recordModal');
         const viewButtons = document.querySelectorAll('.view-record');
         const closeBtn = document.querySelector('.modal-close');
         const closeModalBtn = document.getElementById('closeModalBtn');
         const modalBody = document.getElementById('modalBody');
-        const downloadModalBtn = document.getElementById('downloadModalBtn');
+    const printModalBtn = document.getElementById('printModalBtn');
+    const printRecordButtons = document.querySelectorAll('.print-record');
         
         viewButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const recordId = button.getAttribute('data-id');
                 loadRecordDetails(recordId);
+            });
+        });
+
+        // Wire up print buttons for each record in the table
+        printRecordButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = btn.getAttribute('data-id');
+                printRecord(id);
             });
         });
 
@@ -1247,7 +1255,8 @@ if (isset($_GET['get_record']) && is_numeric($_GET['get_record'])) {
                 })
                 .then(data => {
                     modalBody.innerHTML = data;
-                    downloadModalBtn.href = `?download=${recordId}`;
+                    // store the current record id on the modal for printing
+                    modal.setAttribute('data-current-record', recordId);
                 })
                 .catch(error => {
                     modalBody.innerHTML = `<div class="error-message">Error loading record details: ${error}</div>`;
@@ -1268,13 +1277,173 @@ if (isset($_GET['get_record']) && is_numeric($_GET['get_record'])) {
             }
         });
         
-        // Download all records
-        function downloadAllRecords() {
-            if (confirm('This will download all your medical records as a ZIP file. Continue?')) {
-                // In a real implementation, this would redirect to a script that generates a ZIP file
-                alert('This feature would generate a ZIP file with all your records in a real implementation.');
-                // window.location.href = 'download_all_records.php';
+        // Print an individual record by opening a new window with the record's details and calling print()
+        function printRecord(recordId) {
+            // Fetch the record details via the same endpoint used for the modal
+            fetch(`?get_record=${recordId}`)
+                .then(resp => resp.text())
+                .then(html => {
+                    const printWindow = window.open('', '_blank', 'width=800,height=600');
+                    printWindow.document.write(`<!doctype html><html><head><title>Medical Record #${recordId}</title>`);
+                    // modern print styling
+                    printWindow.document.write(`
+                        <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+                        :root{--primary:#2563eb;--muted:#6b7280}
+                        html,body{background:#fff;margin:0;padding:0;font-family:Roboto, Arial, Helvetica, sans-serif;color:#111}
+                        /* Page settings */
+                        @page { size: auto; margin: 12mm; }
+                        *{box-sizing:border-box}
+                        .print-container{max-width:900px;margin:0 auto;padding:0}
+                        .print-header{display:flex;align-items:center;justify-content:space-between;padding:18px;border-radius:8px;background:linear-gradient(90deg,var(--primary),#1d4ed8);color:#fff}
+                        .brand{display:flex;align-items:center;gap:14px}
+                        .brand .logo{width:56px;height:56px;border-radius:10px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:22px}
+                        .brand h1{font-size:18px;margin:0;font-weight:700}
+                        .meta{text-align:right}
+                        .meta .patient{font-weight:600}
+                        .card{background:#fff;border-radius:10px;padding:18px;margin-top:12px;box-shadow:0 6px 18px rgba(16,24,40,0.06);border:1px solid #f0f3ff}
+                        .row{display:flex;gap:12px;flex-wrap:wrap}
+                        .detail-label{width:170px;font-weight:700;color:var(--muted)}
+                        .detail-value{flex:1;color:#222}
+                        .detail-row{padding:10px 0;border-bottom:1px dashed #f1f5f9}
+                        .detail-row:last-child{border-bottom:none}
+                        h2.section-title{margin:0 0 12px 0;font-size:16px;color:#0f172a}
+                        .footer-note{margin-top:14px;color:var(--muted);font-size:12px}
+                        /* table styles if record contains tables */
+                        table{width:100%;border-collapse:collapse;margin-top:12px}
+                        th,td{padding:10px;border:1px solid #eef2ff;text-align:left}
+                        th{background:#f8fafc;color:var(--muted);font-weight:600}
+                        /* Prevent small elements from creating an extra blank page */
+                        .print-header, .card, .detail-row, table, tr, th, td { break-inside: avoid; page-break-inside: avoid; -webkit-column-break-inside: avoid; }
+                        /* Allow large tables to break across pages gracefully */
+                        table { page-break-inside: auto }
+                        tr { page-break-inside: avoid; page-break-after: auto }
+                        @media print{*{ -webkit-print-color-adjust:exact; } .print-header{box-shadow:none} body{margin:0} }
+                        </style>
+                    `);
+                    printWindow.document.write('</head><body>');
+                    printWindow.document.write('<div class="print-container">');
+                    printWindow.document.write('<div class="print-header">');
+                    printWindow.document.write('<div class="brand"><div class="logo">📋</div><div><h1>MediCare — Medical Record</h1><div style="font-size:13px;opacity:0.92">Record #' + recordId + '</div></div></div>');
+                    printWindow.document.write('<div class="meta"><div class="patient">' + <?php echo json_encode(htmlspecialchars($patient_name)); ?> + '</div><div style="font-size:13px;margin-top:6px">' + new Date().toLocaleDateString() + '</div></div>');
+                    printWindow.document.write('</div>');
+                    printWindow.document.write('<div class="card">');
+                    printWindow.document.write(html);
+                    printWindow.document.write('</div>');
+                    printWindow.document.write('<div class="footer-note">Printed from MediCare Patient Portal • ' + new Date().toLocaleString() + '</div>');
+                    printWindow.document.write('</div>');
+                    printWindow.document.write('</body></html>');
+                    printWindow.document.close();
+                    // Wait for content to load then print
+                    printWindow.onload = function() {
+                        printWindow.focus();
+                        printWindow.print();
+                        // Optionally close after printing
+                        // printWindow.close();
+                    };
+                })
+                .catch(err => alert('Unable to load record for printing: ' + err));
+        }
+
+        // Print all records by creating a printable view of the current table
+        function printAllRecords() {
+            // You might want to confirm with the user
+            const table = document.querySelector('#all-tab table');
+            if (!table) {
+                alert('No records to print.');
+                return;
             }
+
+            const clone = table.cloneNode(true);
+            // Remove action column (last column) from the clone for printing
+            Array.from(clone.querySelectorAll('tr')).forEach(tr => {
+                const cells = tr.children;
+                if (cells.length) {
+                    tr.removeChild(cells[cells.length - 1]);
+                }
+            });
+
+            const printWindow = window.open('', '_blank', 'width=1000,height=800');
+            printWindow.document.write('<!doctype html><html><head><title>All Medical Records</title>');
+            printWindow.document.write(`
+                <style>
+                @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+                :root{--primary:#2563eb;--muted:#6b7280}
+                html,body{background:#fff;margin:0;padding:0;font-family:Roboto, Arial, Helvetica, sans-serif;color:#111}
+                @page { size: auto; margin: 12mm; }
+                .print-wrap{max-width:1100px;margin:0 auto;padding:10px}
+                .print-header{display:flex;justify-content:space-between;align-items:center;padding:14px;border-radius:8px;background:linear-gradient(90deg,var(--primary),#1d4ed8);color:#fff}
+                .print-title{font-size:18px;font-weight:700}
+                .print-sub{font-size:13px;opacity:0.95}
+                table{width:100%;border-collapse:collapse;margin-top:14px}
+                th,td{padding:12px;border-bottom:1px solid #eef2ff;text-align:left}
+                th{background:#fbfdff;color:var(--muted);font-weight:600}
+                tr:hover td{background:#fbfbff}
+                /* Prevent tiny elements from forcing extra pages */
+                .print-header, .print-title, .print-sub, table, tr, th, td { break-inside: avoid; page-break-inside: avoid; -webkit-column-break-inside: avoid; }
+                table { page-break-inside: auto }
+                tr { page-break-inside: avoid; page-break-after: auto }
+                @media print{*{ -webkit-print-color-adjust:exact; }}
+                </style>
+            `);
+            printWindow.document.write('</head><body>');
+            printWindow.document.write('<div class="print-wrap">');
+            printWindow.document.write('<div class="print-header"><div><div class="print-title">Medical Records</div><div class="print-sub"><?php echo htmlspecialchars($patient_name); ?></div></div><div class="print-sub">Printed: ' + new Date().toLocaleString() + '</div></div>');
+            printWindow.document.write(clone.outerHTML);
+            printWindow.document.write('<div style="margin-top:18px;color:var(--muted);font-size:13px">MediCare Patient Portal — Confidential</div>');
+            printWindow.document.write('</div>');
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.onload = function() {
+                printWindow.focus();
+                printWindow.print();
+            };
+        }
+
+        // Modal print button: print the currently loaded record or modal content
+        if (printModalBtn) {
+            printModalBtn.addEventListener('click', function() {
+                const current = modal.getAttribute('data-current-record');
+                if (current) {
+                    printRecord(current);
+                } else {
+                    // Print modal HTML content directly
+                    const printWindow = window.open('', '_blank', 'width=800,height=600');
+                    printWindow.document.write('<!doctype html><html><head><title>Print Preview</title>');
+                    printWindow.document.write(`
+                        <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+                        :root{--primary:#2563eb;--muted:#6b7280}
+                        html,body{background:#fff;margin:0;padding:0;font-family:Roboto, Arial, Helvetica, sans-serif;color:#111}
+                        @page { size: auto; margin: 12mm; }
+                        .print-container{max-width:900px;margin:0 auto;padding:10px}
+                        .print-header{display:flex;align-items:center;justify-content:space-between;padding:14px;border-radius:8px;background:linear-gradient(90deg,var(--primary),#1d4ed8);color:#fff}
+                        .brand{display:flex;align-items:center;gap:14px}
+                        .brand .logo{width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:20px}
+                        .brand h1{font-size:16px;margin:0;font-weight:700}
+                        .meta{text-align:right}
+                        .footer-note{margin-top:12px;color:var(--muted);font-size:12px}
+                        .print-header, .card, .detail-row, table, tr, th, td { break-inside: avoid; page-break-inside: avoid; -webkit-column-break-inside: avoid; }
+                        @media print{*{ -webkit-print-color-adjust:exact; } body{margin:0} }
+                        </style>
+                    `);
+                    printWindow.document.write('</head><body>');
+                    printWindow.document.write('<div class="print-container">');
+                    printWindow.document.write('<div class="print-header">');
+                    printWindow.document.write('<div class="brand"><div class="logo">📋</div><div><h1>MediCare — Record</h1></div></div>');
+                    printWindow.document.write('<div class="meta">' + new Date().toLocaleString() + '</div>');
+                    printWindow.document.write('</div>');
+                    printWindow.document.write('<div class="card">' + modalBody.innerHTML + '</div>');
+                    printWindow.document.write('<div class="footer-note">Printed from MediCare Patient Portal</div>');
+                    printWindow.document.write('</div>');
+                    printWindow.document.write('</body></html>');
+                    printWindow.document.close();
+                    printWindow.onload = function() {
+                        printWindow.focus();
+                        printWindow.print();
+                    };
+                }
+            });
         }
         
         // Sort functionality
