@@ -12,8 +12,8 @@ if (!isPatient()) {
 // Get patient ID from session
 $patient_id = $_SESSION['user_id'];
 
-// Fetch patient details
-$patient_stmt = $conn->prepare("SELECT first_name, last_name, email, phone FROM patients WHERE patient_id = ?");
+// Fetch patient details (include insurance fields so JS can read them)
+$patient_stmt = $conn->prepare("SELECT first_name, last_name, email, phone, insurance_provider, insurance_policy_number FROM patients WHERE patient_id = ?");
 $patient_stmt->bind_param("i", $patient_id);
 $patient_stmt->execute();
 $patient_result = $patient_stmt->get_result();
@@ -51,9 +51,9 @@ if ($result->num_rows > 0) {
     }
 }
 
-// Fetch patient information
+// Fetch patient information (also include insurance fields for completeness)
 $patient_info = [];
-$sql_patient = "SELECT first_name, last_name, email, phone FROM patients WHERE patient_id = ?";
+$sql_patient = "SELECT first_name, last_name, email, phone, insurance_provider, insurance_policy_number FROM patients WHERE patient_id = ?";
 $stmt_patient = $conn->prepare($sql_patient);
 $stmt_patient->bind_param("i", $patient_id);
 $stmt_patient->execute();
