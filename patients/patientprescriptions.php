@@ -161,6 +161,43 @@ if (isset($_GET['logout'])) {
             margin: 0 auto;
             padding: 0 15px;
         }
+
+        /* Navigation */
+        .nav-container {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            padding: 0;
+        }
+
+        .nav-menu li {
+            padding: 0;
+        }
+
+        .nav-menu a {
+            display: block;
+            padding: 1rem 1.5rem;
+            color: var(--dark);
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .nav-menu a:hover, .nav-menu a.active {
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+            background-color: #f8fafc;
+        }
+
+        .nav-menu a i {
+            margin-right: 8px;
+        }
         
         /* Header Styles */
         header {
@@ -527,9 +564,10 @@ if (isset($_GET['logout'])) {
             <ul class="nav-menu">
                 <li><a href="patientportal.php"><i class="fas fa-home"></i> Dashboard</a></li>
                 <li><a href="patientappointments.php"><i class="fas fa-calendar-check"></i> Appointments</a></li>
-                <li><a href="patientprescriptions.php" class="active"><i class="fas fa-prescription"></i> Prescriptions</a></li>
-                <li><a href="patientbilling.php"><i class="fas fa-file-invoice-dollar"></i> Billing</a></li>
                 <li><a href="patientmedicalrecords.php"><i class="fas fa-file-medical"></i> Medical Records</a></li>
+                <li><a href="patientprescriptions.php" class="active"><i class="fas fa-prescription-bottle"></i> Prescriptions</a></li>
+                <li><a href="patientbilling.php"><i class="fas fa-file-invoice-dollar"></i> Billing</a></li>
+                <li><a href="patientprofile.php"><i class="fas fa-user"></i> Profile</a></li>
             </ul>
         </div>
     </div>

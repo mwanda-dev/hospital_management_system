@@ -43,7 +43,7 @@ if ($page > $total_pages) {
     $offset = ($page - 1) * $records_per_page;
 }
 
-// Use prepared statement with LIMIT and OFFSET (bind as integers)
+// Prepare and execute statement to fetch records for this patient
 $stmt = $conn->prepare(
     "SELECT mr.*, d.first_name, d.last_name, d.specialization 
     FROM medical_records mr 
@@ -57,7 +57,7 @@ $stmt->bind_param("iii", $patient_id, $records_per_page, $offset);
 $stmt->execute();
 $result = $stmt->get_result();
 
-if ($result->num_rows > 0) {
+if ($result && $result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         $records[] = $row;
     }
